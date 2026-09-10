@@ -274,7 +274,6 @@
       <text name="SearchStarted" value="Suche begonnen"/>
       <text name="SearchSearching" value="Durchsuche {0}"/>
       <text name="SearchSearchingByPlugin" value="Plugin {0} wurde verwendet, um die Datei zu suchen." />
-      <text name="SearchExplorerItem" value="Suche nach {0}..."/>
 
       <text name="ResultsPreviewSpacerText" value="(21)"/>
       <text name="ResultsPreviewText" value="&#x9;Beispielergebnisse, Zeile und Fund werden angezeigt"/>
@@ -383,10 +382,6 @@
       <text name="Documents" value="Unterlagen"/>
       <text name="Code" value="Code"/>
       <text name="Media" value="Medien"/>
-
-      <text name="Theme.System" value="System"/>
-      <text name="Theme.Light" value="Licht"/>
-      <text name="Theme.Dark" value="Dunkel"/>
    </generic>
 
 </language>

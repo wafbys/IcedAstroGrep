@@ -179,8 +179,6 @@ namespace IcedAstroGrep
 
 		private string textEditors = (new TextEditor("*", "notepad", "%1", 0)).ToString();
 
-		private int themeType = 0;
-
 		private bool useIcedAstroGrepAccentColor = true;
 
 		private bool useEncodingCache = true;
@@ -649,15 +647,6 @@ namespace IcedAstroGrep
 		{
 			get { return MySettings.textEditors; }
 			set { MySettings.textEditors = value; }
-		}
-
-		/// <summary>
-		/// Gets/Sets the theme type.
-		/// </summary>
-		public static int ThemeType
-		{
-			get { return MySettings.themeType; }
-			set { MySettings.themeType = value; }
 		}
 
 		/// <summary>

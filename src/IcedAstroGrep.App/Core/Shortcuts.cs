@@ -87,35 +87,6 @@ namespace IcedAstroGrep
          return IsShortcut(Environment.GetFolderPath(Environment.SpecialFolder.Programs));
       }
 
-      /// <summary>
-      /// Checks to see if IcedAstroGrep is a search option on right-click of folders
-      /// </summary>
-      /// <returns>True - set, False - not set</returns>
-      /// <history>
-      /// [Curtis_Beard]	   10/15/2005	Created
-      /// [Curtis_Beard]	   07/11/2006	CHG: remove Folder based if exists
-      /// [Curtis_Beard]	   11/13/2006	CHG: renamed from CheckIfSearchOption
-      /// </history>
-      public static bool IsSearchOption()
-      {
-         if (Legacy.CheckIfOldSearchOption())
-         {
-            Legacy.RemoveOldSearchOption();
-         }
-
-         Microsoft.Win32.RegistryKey _key = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"Directory\shell\astrogrep", false);
-
-         // key exists
-         if (_key != null)
-         {
-            _key.Close();
-            return true;
-         }
-
-         // key doesn't
-         return false;
-      }
-
       #endregion
 
       #region Private Methods

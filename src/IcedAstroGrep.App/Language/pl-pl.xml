@@ -274,7 +274,6 @@
       <text name="SearchStarted" value="Wyszukiwanie rozpoczęte"/>
       <text name="SearchSearching" value="Wyszukiwanie {0}"/>
       <text name="SearchSearchingByPlugin" value="Do przeszukania pliku wykorzystano wtyczkę {0}." />
-      <text name="SearchExplorerItem" value="Wyszukiwanie przy pomocy {0}..."/>
 
       <text name="ResultsPreviewSpacerText" value="(21)"/>
       <text name="ResultsPreviewText" value="&#x9;Wyświetlana przykładowa linia z wynikiem oraz wynik."/>
@@ -383,10 +382,6 @@
       <text name="Documents" value="Dokumenty"/>
       <text name="Code" value="Kod"/>
       <text name="Media" value="Głoska bezdźwięczna"/>
-
-      <text name="Theme.System" value="System"/>
-      <text name="Theme.Light" value="Światło"/>
-      <text name="Theme.Dark" value="Ciemny"/>
    </generic>
    
 </language>

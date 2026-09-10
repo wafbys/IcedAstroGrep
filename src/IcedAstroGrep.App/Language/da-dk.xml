@@ -274,7 +274,6 @@
       <text name="SearchStarted" value="Søgning begonnen" />
       <text name="SearchSearching" value="Søger {0}" />
       <text name="SearchSearchingByPlugin" value="Plugin {0} blev anvendt til at søge i filen." />
-      <text name="SearchExplorerItem" value="Søger med {0}..." />
 
       <text name="ResultsPreviewSpacerText" value="(21)"/>
       <text name="ResultsPreviewText" value="&#x9;Eksempel på et resultat - linie og, søgematch, vises" />
@@ -383,9 +382,5 @@
       <text name="Documents" value="Dokumenter"/>
       <text name="Code" value="Kode"/>
       <text name="Media" value="Medier"/>
-
-      <text name="Theme.System" value="System"/>
-      <text name="Theme.Light" value="Lys"/>
-      <text name="Theme.Dark" value="Mørk"/>
    </generic>
 </language>

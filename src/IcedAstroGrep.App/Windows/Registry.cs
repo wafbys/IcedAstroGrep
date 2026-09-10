@@ -36,32 +36,6 @@ namespace IcedAstroGrep.Windows
 		private static readonly string DEFAULT_SECTION_KEY = "Startup";
 
 		/// <summary>
-		/// The path for the theme setting.
-		/// </summary>
-		public static readonly string ThemePath = "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
-
-		/// <summary>
-		/// The key name for the theme setting.
-		/// </summary>
-		public static readonly string ThemeKey = "AppsUseLightTheme";
-
-		/// <summary>
-		/// System theme types
-		/// </summary>
-		public enum ThemeType
-		{
-			/// <summary>
-			/// Light theme
-			/// </summary>
-			Light = 1,
-
-			/// <summary>
-			/// Dark theme
-			/// </summary>
-			Dark = 2
-		}
-
-		/// <summary>
 		/// Checks to see if a key exists in the Startup section.
 		/// </summary>
 		/// <param name="key">Name of setting to check</param>
@@ -133,28 +107,6 @@ namespace IcedAstroGrep.Windows
 				DeleteSetting(APP_KEY, DEFAULT_SECTION_KEY, key);
 			}
 			catch { }
-		}
-
-		/// <summary>
-		/// Retrieve installer selected language.
-		/// </summary>
-		/// <returns>installer language (language number), string.empty if not found or read before</returns>
-		/// <history>
-		/// [Curtis_Beard]		05/08/2014	ADD: 70, Installer
-		/// </history>
-		public static string GetInstallerLanguage()
-		{
-			string language = GetSetting(@"Software", "IcedAstroGrep", "Installer Language", string.Empty);
-			string read = GetSetting(@"Software", "IcedAstroGrep", "Installer Language Checked", bool.FalseString);
-
-			// installer language set but not read yet, then return that language (and mark as read), otherwise return empty string
-			if (!string.IsNullOrEmpty(language) && read.Equals(bool.FalseString, StringComparison.InvariantCultureIgnoreCase))
-			{
-				SaveSetting(@"Software", "IcedAstroGrep", "Installer Language Checked", bool.TrueString);
-				return language;
-			}
-
-			return string.Empty;
 		}
 
 		/// <summary>
@@ -266,47 +218,6 @@ namespace IcedAstroGrep.Windows
 			}
 
 			return _setting;
-		}
-
-		/// <summary>
-		/// Retrieve the user's current system theme selection (if available).  Started with Windows 10.
-		/// </summary>
-		/// <returns><see cref="ThemeType"/>, defaults to <see cref="ThemeType.Light"/></returns>
-		public static ThemeType GetSystemThemeType()
-		{
-			try
-			{
-				int res = (int)Microsoft.Win32.Registry.GetValue(ThemePath, ThemeKey, 1);
-
-				// 0 - Dark
-				// 1 - Light
-				switch (res)
-				{
-					case 0:
-						return ThemeType.Dark;
-
-					default:
-						return ThemeType.Light;
-				}
-			}
-			catch
-			{
-				//Exception Handling
-			}
-
-			return ThemeType.Light;
-		}
-
-		/// <summary>
-		/// Determines if product was installed via Installer.
-		/// </summary>
-		/// <returns>true if installed via Installer, false otherwise</returns>
-		/// <history>
-		/// [Curtis_Beard]	   09/16/2014	ADD: installer registry check method
-		/// </history>
-		public static bool IsInstaller()
-		{
-			return !string.IsNullOrEmpty(GetSetting(@"Software", "IcedAstroGrep", "Installer Language", string.Empty));
 		}
 
 		/// <summary>

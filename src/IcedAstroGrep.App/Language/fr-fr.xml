@@ -274,7 +274,6 @@
       <text name="SearchStarted" value="Recherche démarrée"/>
       <text name="SearchSearching" value="Analyse de {0}"/>
       <text name="SearchSearchingByPlugin" value="L’extension {0} était utilisée pour analyser le fichier." />
-      <text name="SearchExplorerItem" value="Analyse en utilisant {0}..."/>
 
       <text name="ResultsPreviewSpacerText" value="(21)"/>
       <text name="ResultsPreviewText" value="&#x9;Exemple d’une ligne de résultat et d’une correspondance affichées"/>
@@ -383,10 +382,6 @@
       <text name="Documents" value="Documents"/>
       <text name="Code" value="Code"/>
       <text name="Media" value="Médias"/>
-
-      <text name="Theme.System" value="Système"/>
-      <text name="Theme.Light" value="Lumière"/>
-      <text name="Theme.Dark" value="Sombre"/>
    </generic>
    
 </language>

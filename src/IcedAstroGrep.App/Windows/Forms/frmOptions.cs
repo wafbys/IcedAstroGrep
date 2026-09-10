@@ -392,12 +392,8 @@ namespace IcedAstroGrep.Windows.Forms
 				__LanguageChange = true;
 			}
 
-			// set shortcuts
-			if (!Registry.IsInstaller())
-			{
-				Shortcuts.SetDesktopShortcut(chkDesktopShortcut.Checked);
-				Shortcuts.SetStartMenuShortcut(chkStartMenuShortcut.Checked);
-			}
+			Shortcuts.SetDesktopShortcut(chkDesktopShortcut.Checked);
+			Shortcuts.SetStartMenuShortcut(chkStartMenuShortcut.Checked);
 
 			SaveEditors();
 
@@ -516,16 +512,8 @@ namespace IcedAstroGrep.Windows.Forms
 		private void frmOptions_Load(object sender, System.EventArgs e)
 		{
 			cboPathMRUCount.SelectedIndex = GeneralSettings.MaximumMRUPaths - 1;
-			if (Registry.IsInstaller())
-			{
-				chkDesktopShortcut.Visible = false;
-				chkStartMenuShortcut.Visible = false;
-			}
-			else
-			{
-				chkDesktopShortcut.Checked = Shortcuts.IsDesktopShortcut();
-				chkStartMenuShortcut.Checked = Shortcuts.IsStartMenuShortcut();
-			}
+			chkDesktopShortcut.Checked = Shortcuts.IsDesktopShortcut();
+			chkStartMenuShortcut.Checked = Shortcuts.IsStartMenuShortcut();
 			chkShowExclusionErrorMessage.Checked = GeneralSettings.ShowExclusionErrorMessage;
 			chkSaveSearchOptions.Checked = GeneralSettings.SaveSearchOptionsOnExit;
 			chkDetectFileEncoding.Checked = GeneralSettings.DetectFileEncoding;

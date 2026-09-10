@@ -275,7 +275,6 @@
       <text name="SearchStarted" value="Ricerca in corso"/>
       <text name="SearchSearching" value="Ricerca {0}"/>
       <text name="SearchSearchingByPlugin" value="È stato utilizzato il plugin {0} per cercare il file." />
-      <text name="SearchExplorerItem" value="Ricerca con {0}..."/>
 
       <text name="ResultsPreviewSpacerText" value="(21)"/>
       <text name="ResultsPreviewText" value="&#x9;Esempio di visualizzazione della riga e della corrispondenza trovata"/>
@@ -384,10 +383,6 @@
       <text name="Documents" value="Documenti"/>
       <text name="Code" value="Codice"/>
       <text name="Media" value="Media"/>
-
-      <text name="Theme.System" value="Sistema"/>
-      <text name="Theme.Light" value="Luce"/>
-      <text name="Theme.Dark" value="Scuro"/>
    </generic>
    
 </language>

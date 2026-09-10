@@ -51,44 +51,6 @@ namespace IcedAstroGrep.Windows
       }
 
       /// <summary>
-      /// Checks for the Folder based Search option.
-      /// </summary>
-      /// <returns>True if found, False otherwise</returns>
-      /// <history>
-      /// 	[Curtis_Beard]		07/11/2006	Created
-      /// </history>
-      public static bool CheckIfOldSearchOption()
-      {
-         Microsoft.Win32.RegistryKey _key;
-         _key = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"Folder\shell\astrogrep", false);
-
-         if (_key != null)
-            return true;
-
-         return false;
-      }
-
-      /// <summary>
-      /// Removes the Folder based search option.
-      /// </summary>
-      /// <history>
-      /// [Curtis_Beard]		07/11/2006	Created
-      /// </history>
-      public static void RemoveOldSearchOption()
-      {
-         Microsoft.Win32.RegistryKey _key = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(@"Folder\shell", true);
-
-         if (_key != null)
-         {
-            try
-            {
-               _key.DeleteSubKeyTree("astrogrep");
-            }
-            catch {}
-         }
-      }
-
-      /// <summary>
       /// Attempt to convert search options in registry to most recent style.
       /// </summary>
       /// <remarks>
@@ -433,13 +395,6 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void ConvertLanguageValue()
 		{
-         // set language to installer selected
-         string installerLanguage = Registry.GetInstallerLanguage();
-         if (!string.IsNullOrEmpty(installerLanguage))
-         {
-            GeneralSettings.Language = installerLanguage;
-         }
-
 			switch (GeneralSettings.Language)
 			{
 				case "Espa�ol":

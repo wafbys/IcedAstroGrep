@@ -1270,11 +1270,7 @@ namespace IcedAstroGrep.Windows.Forms
 			MainMenu.Font = Font;
 			stbStatus.Font = Font;
 
-			// reload the theme based on current setting
-			if (Enum.TryParse(GeneralSettings.ThemeType.ToString(), out ThemeProvider.ThemeType themeType))
-			{
-				ReloadTheme(themeType);
-			}
+			ReloadTheme();
 		}
 
 		/// <summary>
@@ -2618,12 +2614,7 @@ namespace IcedAstroGrep.Windows.Forms
 
 				if (optionsForm.IsThemeChange)
 				{
-					if (Enum.TryParse(GeneralSettings.ThemeType.ToString(), out ThemeProvider.ThemeType themeType))
-					{
-						ThemeProvider.ChangeTheme(themeType);
-
-						ReloadTheme(themeType);
-					}
+					ReloadTheme();
 				}
 
 				// update current display
@@ -3823,10 +3814,9 @@ namespace IcedAstroGrep.Windows.Forms
 		}
 
 		/// <summary>
-		/// Reload this form based on the selected theme.
+		/// Reload this form based on the current light theme and accent-color setting.
 		/// </summary>
-		/// <param name="themeType"></param>
-		private void ReloadTheme(ThemeProvider.ThemeType themeType)
+		private void ReloadTheme()
 		{
 			this.InvokeIfRequired(() =>
 			{

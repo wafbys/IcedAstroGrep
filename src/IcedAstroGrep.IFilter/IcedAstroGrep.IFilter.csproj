@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>IFilterTextReader</RootNamespace>
+    <AssemblyName>IcedAstroGrep.IFilter</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Description>Windows IFilter wrapper used by IcedAstroGrep (derived from IFilterTextReader).</Description>
+  </PropertyGroup>
+</Project>

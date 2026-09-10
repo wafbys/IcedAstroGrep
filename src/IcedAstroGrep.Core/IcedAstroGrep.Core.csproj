@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>IcedAstroGrep.Core</RootNamespace>
+    <AssemblyName>IcedAstroGrep.Core</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Description>Search engine for IcedAstroGrep (derived from AstroGrep / libAstroGrep).</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="5.4.0" />
+  </ItemGroup>
+</Project>

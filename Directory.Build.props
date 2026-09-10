@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Version>1.0.0</Version>
+    <Authors>IcedAstroGrep contributors</Authors>
+    <Company>IcedAstroGrep</Company>
+    <Copyright>Based on AstroGrep. Original copyright (c) AstroComma Incorporated. Modifications (c) IcedAstroGrep contributors.</Copyright>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <NoWarn>$(NoWarn);WFO1000;SYSLIB0001;SYSLIB0051;CA2022;CS0618</NoWarn>
+  </PropertyGroup>
+</Project>
+

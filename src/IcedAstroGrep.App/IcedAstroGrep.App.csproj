@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>IcedAstroGrep</RootNamespace>
+    <AssemblyName>IcedAstroGrep</AssemblyName>
+    <ApplicationIcon>Images\AstroGrep_Icon_256x256.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>IcedAstroGrep.Windows.Program</StartupObject>
+    <EnableDefaultEmbeddedResourceItems>true</EnableDefaultEmbeddedResourceItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelNumberFormat" Version="1.1.0" />
+    <PackageReference Include="NLog" Version="5.4.0" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\IcedAstroGrep.Core\IcedAstroGrep.Core.csproj" />
+    <ProjectReference Include="..\IcedAstroGrep.IFilter\IcedAstroGrep.IFilter.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Language\*.xml" />
+    <EmbeddedResource Include="Output\Output.html" />
+    <EmbeddedResource Include="Output\Output.css" />
+    <EmbeddedResource Include="Output\Output-fileNameOnly.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Images\AstroGrep_256x256.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

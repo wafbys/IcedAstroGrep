@@ -1,0 +1,25 @@
+IcedAstroGrep
+=============
+
+IcedAstroGrep is a portable, Windows-only fork of AstroGrep 4.4.9.
+
+AstroGrep File Searching Utility
+Written by Theodore L. Ward
+Copyright (C) 2002 AstroComma Incorporated
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+Original authors may be contacted at:
+  ted@astrocomma.com
+  curtismbeard@gmail.com
+
+Modifications in this fork (IcedAstroGrep) include:
+  - Retarget to .NET 10 (net10.0-windows)
+  - SDK-style projects and PackageReference
+  - Portable-only distribution (no installer, no Explorer context menu)
+  - Light theme only
+  - Cooperative search cancellation (CancellationToken instead of Thread.Abort)
+  - Encoding cache serialization without BinaryFormatter

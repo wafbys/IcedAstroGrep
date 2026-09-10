@@ -5,10 +5,8 @@ using System.Linq;
 using System.Windows.Forms;
 
 using IcedAstroGrep.Core;
-using IcedAstroGrep.Core.Logging;
-using IcedAstroGrep;
-using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.EncodingDetection;
+using IcedAstroGrep;
 
 namespace IcedAstroGrep.Windows.Forms
 {
@@ -56,10 +54,7 @@ namespace IcedAstroGrep.Windows.Forms
 		}
 
 		private Font __FileFont = Convertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
-		private bool __IsAdmin = API.UACHelper.HasAdminPrivileges();
 		private bool __LanguageChange = false;
-		private bool __RightClickEnabled = false;
-		private bool __RightClickUpdate = false;
 		private bool inhibitFileEncodingAutoCheck;
 
 		/// <summary>
@@ -73,14 +68,11 @@ namespace IcedAstroGrep.Windows.Forms
 		{
 			InitializeComponent();
 
-			__RightClickEnabled = Shortcuts.IsSearchOption();
-
 			ForeColorButton.ColorChange += new IcedAstroGrep.Windows.Controls.ColorButton.ColorChangeHandler(NewColor);
 			BackColorButton.ColorChange += new IcedAstroGrep.Windows.Controls.ColorButton.ColorChangeHandler(NewColor);
 			btnResultsWindowForeColor.ColorChange += new IcedAstroGrep.Windows.Controls.ColorButton.ColorChangeHandler(NewColor);
 			btnResultsWindowBackColor.ColorChange += new IcedAstroGrep.Windows.Controls.ColorButton.ColorChangeHandler(NewColor);
 			btnResultsContextForeColor.ColorChange += new IcedAstroGrep.Windows.Controls.ColorButton.ColorChangeHandler(NewColor);
-			chkRightClickOption.CheckedChanged += new EventHandler(chkRightClickOption_CheckedChanged);
 
 			API.ListViewExtensions.SetTheme(lstFiles);
 			API.ListViewExtensions.SetTheme(TextEditorsList);
@@ -370,10 +362,8 @@ namespace IcedAstroGrep.Windows.Forms
 			GeneralSettings.LongLineCharCount = (int)numResultsLongLineCount.Value;
 			GeneralSettings.BeforeAfterCharCount = (int)numResultsBeforeAfterCount.Value;
 
-			// determine if theme needs updated (theme type changed or accent color check-box toggled)
-			if (cboTheme.SelectedIndex != GeneralSettings.ThemeType || GeneralSettings.UseIcedAstroGrepAccentColor != chkLabelColor.Checked)
+			if (GeneralSettings.UseIcedAstroGrepAccentColor != chkLabelColor.Checked)
 			{
-				GeneralSettings.ThemeType = cboTheme.SelectedIndex;
 				IsThemeChange = true;
 			}
 
@@ -414,24 +404,6 @@ namespace IcedAstroGrep.Windows.Forms
 			SaveFileEncodings();
 
 			PluginManager.Save();
-
-			// handle right click search change
-			if (__RightClickUpdate)
-			{
-				try
-				{
-					string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Application.ExecutablePath), "IcedAstroGrep.AdminProcess.exe");
-					string agPath = string.Format("\"{0}\"", Application.ExecutablePath);
-					string explorerText = string.Format("\"{0}\"", Language.GetGenericText("SearchExplorerItem"));
-					string args = string.Format("\"{0}\" {1} {2}", chkRightClickOption.Checked.ToString(), agPath, explorerText);
-
-					API.UACHelper.AttemptPrivilegeEscalation(path, args, false);
-				}
-				catch (Exception ex)
-				{
-					LogClient.Instance.Logger.Error(ex, "An error occurred trying to call the privilege escaltion to set the right click search option.");
-				}
-			}
 
 			this.Close();
 		}
@@ -499,34 +471,6 @@ namespace IcedAstroGrep.Windows.Forms
 		}
 
 		/// <summary>
-		/// Handle change to the right click checkbox.
-		/// </summary>
-		/// <param name="sender">system parameter</param>
-		/// <param name="e">system parameter</param>
-		/// <history>
-		/// [Curtis_Beard]      10/09/2012	Initial: 3575507, handle UAC request for right click option
-		/// </history>
-		private void chkRightClickOption_CheckedChanged(object sender, EventArgs e)
-		{
-			if (chkRightClickOption.Checked != __RightClickEnabled)
-			{
-				if (!__IsAdmin)
-				{
-					API.UACHelper.AddShieldToButton(btnOK);
-				}
-				__RightClickUpdate = true;
-			}
-			else
-			{
-				if (!__IsAdmin)
-				{
-					API.UACHelper.RemoveShieldFromButton(btnOK);
-				}
-				__RightClickUpdate = false;
-			}
-		}
-
-		/// <summary>
 		/// Displays the given font as a string on the given label.
 		/// </summary>
 		/// <param name="fnt">Font to display</param>
@@ -572,7 +516,6 @@ namespace IcedAstroGrep.Windows.Forms
 		private void frmOptions_Load(object sender, System.EventArgs e)
 		{
 			cboPathMRUCount.SelectedIndex = GeneralSettings.MaximumMRUPaths - 1;
-			chkRightClickOption.Checked = Shortcuts.IsSearchOption();
 			if (Registry.IsInstaller())
 			{
 				chkDesktopShortcut.Visible = false;
@@ -681,24 +624,6 @@ namespace IcedAstroGrep.Windows.Forms
 			lstFiles.Columns[0].Width = Constants.OPTIONS_FILES_COLUMN_0_WIDTH * GeneralSettings.WindowsDPIPerCentSetting / 100;
 			lstFiles.Columns[1].Width = Constants.OPTIONS_FILES_COLUMN_1_WIDTH * GeneralSettings.WindowsDPIPerCentSetting / 100;
 			lstFiles.Columns[2].Width = Constants.OPTIONS_FILES_COLUMN_2_WIDTH * GeneralSettings.WindowsDPIPerCentSetting / 100;
-
-			// setup the theme drop down list
-			var themeValues = CreateList(new { Name = "", Value = 0 });
-			themeValues.Clear();
-			Array themeEnumValues = Enum.GetValues(typeof(Theme.ThemeProvider.ThemeType));
-			foreach (Theme.ThemeProvider.ThemeType val in themeEnumValues)
-			{
-				themeValues.Add(new { Name = Language.GetGenericText($"Theme.{Enum.GetName(typeof(Theme.ThemeProvider.ThemeType), val)}"), Value = (int)val });
-			}
-			cboTheme.DisplayMember = "Name";
-			cboTheme.ValueMember = "Value";
-			cboTheme.DataSource = themeValues;
-			cboTheme.SelectedValue = GeneralSettings.ThemeType;
-		}
-
-		private List<T> CreateList<T>(params T[] elements)
-		{
-			return new List<T>(elements);
 		}
 
 		/// <summary>

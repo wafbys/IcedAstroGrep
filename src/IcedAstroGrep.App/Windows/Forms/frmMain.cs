@@ -567,21 +567,6 @@ namespace IcedAstroGrep.Windows.Forms
 		}
 
 		/// <summary>
-		/// Displays update check window to user.
-		/// </summary>
-		/// <param name="sender">system parameter</param>
-		/// <param name="e">system parameter</param>
-		/// <history>
-		/// [Curtis_Beard]		05/06/2014	Initial
-		/// [Curtis_Beard]		05/14/2015	CHG: use ToolStripMenuItem instead of MenuItem
-		/// </history>
-		private void CheckForUpdateMenuItem_Click(object sender, EventArgs e)
-		{
-			var dlg = new frmCheckForUpdateTemp();
-			dlg.ShowDialog(this);
-		}
-
-		/// <summary>
 		/// Checks whether to show all results after a search (thread safe).
 		/// </summary>
 		/// <history>
@@ -971,19 +956,6 @@ namespace IcedAstroGrep.Windows.Forms
 					}
 				}
 			});
-		}
-
-		/// <summary>
-		/// Handle donate menu item selection.
-		/// </summary>
-		/// <param name="sender">system parameter</param>
-		/// <param name="e">system parameter</param>
-		/// <history>
-		/// [Curtis_Beard]      09/18/2013  CHG: 113, add donation link
-		/// </history>
-		private void donateToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			System.Diagnostics.Process.Start(ProductInformation.DonationUrl);
 		}
 
 		/// <summary>
@@ -5023,24 +4995,6 @@ namespace IcedAstroGrep.Windows.Forms
 			}
 
 			return true;
-		}
-
-		/// <summary>
-		/// Shows help file (.chm) to user.
-		/// </summary>
-		/// <param name="sender">system parameter</param>
-		/// <param name="e">system parameter</param>
-		/// <history>
-		/// [Curtis_Beard]		05/06/2014	Initial
-		/// [Curtis_Beard]		05/14/2015	CHG: use ToolStripMenuItem instead of MenuItem
-		/// [Curtis_Beard]		06/02/2015	CHG: use Common code to get url
-		/// </history>
-		private void ViewHelpMenuItem_Click(object sender, EventArgs e)
-		{
-			//Future?: support currently selected language help file (IcedAstroGrep-Help-en-us.chm, IcedAstroGrep-Help-da-dk.chm, etc.)
-			//Help.ShowHelp(this, Path.Combine(Constants.ProductLocation, "IcedAstroGrep-Help.chm"));
-
-			System.Diagnostics.Process.Start(ProductInformation.HelpUrl);
 		}
 
 		/// <summary>

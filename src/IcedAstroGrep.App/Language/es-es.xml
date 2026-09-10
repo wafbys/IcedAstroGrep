@@ -84,14 +84,10 @@
          <menuitem index="3" value="&amp;Opciones" />
       </menu>
       <menu index="4" value="A&amp;yuda">
-         <menuitem index="0" value="&amp;Ver la ayuda" />
-         <menuitem index="1" value="&amp;Expresiones regulares" />
-         <menuitem index="2" value="Archivo de &amp;registro" />
-         <menuitem index="3" value="-" />
-         <menuitem index="4" value="&amp;Buscar actualizaciones..." />
-         <menuitem index="5" value="-" />
-         <menuitem index="6" value="&amp;Donar" />
-         <menuitem index="7" value="&amp;Acerca de IcedAstroGrep" />
+         <menuitem index="0" value="&amp;Expresiones regulares" />
+         <menuitem index="1" value="Archivo de &amp;registro" />
+         <menuitem index="2" value="-" />
+         <menuitem index="3" value="&amp;Acerca de IcedAstroGrep" />
       </menu>
 
       <!-- status bar items default state-->
@@ -118,7 +114,6 @@
    </screen>
    
    <screen name="frmAbout" value="Acerca de {0}">
-      <control name="lnkHomePage" value="{0} Home Page" />
       <control name="LicenseLinkLabel" value="Licencia GNU"/>
       <control name="CopyrightLabel" value="Copyright (C) 2002 - {0} AstroComma Inc."/>
       <control name="lblDescription" value="Derechos de autor adicional (C) 2002 a Theodore L. Ward. IcedAstroGrep viene con ABSOLUTAMENTE NINGUNA GARANTÍA. Esto es software libre, y le invitamos a redistribuirlo bajo ciertas condiciones."/>
@@ -141,7 +136,6 @@
    </screen>
    
    <screen name="frmOptions" value="Opciones">
-      <control name="chkRightClickOption" value="Seleccione la opción al pulsar el botón &amp;derecho sobre una carpeta" />
       <control name="lblStoredPaths" value="Número de rutas usadas recientemente a almacenar" />
       <control name="btnEdit" value="&amp;Editar..." />
       <control name="btnRemove" value="&amp;Borrar" />
@@ -183,7 +177,6 @@
       <control name="chkUseEncodingCache" value="Habilitar caché para las codificaciones detectadas."/>
       <control name="btnCacheClear" value="Limpiar caché"/>
       <control name="lblForceEncoding" value="Codificación de fuerza"/>
-      <control name="ThemeGroup" value="Tema"/>
    </screen>
    
    <screen name="frmPrint" value="Impresión">
@@ -225,11 +218,6 @@
       <control name="sbtnStatus" value="Estado"/>
       <control name="sbtnExclusions" value="Exclusiones"/>
       <control name="sbtnError" value="Error"/>
-   </screen>
-
-   <screen name="frmCheckForUpdateTemp" value="Buscar actualizaciones">
-      <control name="btnOK" value="&amp;Aceptar"/>
-      <control name="lblVersionCheck" value="Comprobar actualizaciones..." />
    </screen>
 
    <screen name="frmAddEditFileEncoding" value="Codificación de archivos">

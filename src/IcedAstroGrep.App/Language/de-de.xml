@@ -84,14 +84,10 @@
          <menuitem index="3" value="&amp;Einstellungen..." />
       </menu>
       <menu index="4" value="&amp;Hilfe">
-         <menuitem index="0" value="&amp;Hilfe" />
-         <menuitem index="1" value="&amp;Reguläre Ausdrücke" />
-         <menuitem index="2" value="&amp;Logdatei" />
-         <menuitem index="3" value="-" />
-         <menuitem index="4" value="&amp;Auf Updates prüfen..." />
-         <menuitem index="5" value="-" />
-         <menuitem index="6" value="&amp;Spenden" />
-         <menuitem index="7" value="&amp;Über IcedAstroGrep" />
+         <menuitem index="0" value="&amp;Reguläre Ausdrücke" />
+         <menuitem index="1" value="&amp;Logdatei" />
+         <menuitem index="2" value="-" />
+         <menuitem index="3" value="&amp;Über IcedAstroGrep" />
       </menu>
 
       <!-- status bar items default state-->
@@ -118,7 +114,6 @@
    </screen>
 
    <screen name="frmAbout" value="Über {0}">
-      <control name="lnkHomePage" value="{0} Homepage" />
       <control name="LicenseLinkLabel" value="GNU-Lizenz"/>
       <control name="CopyrightLabel" value="Copyright (C) 2002 bis {0} AstroComma Inc."/>
       <control name="lblDescription" value="Zusätzliche Copyright (C) 2002 bis Theodore L. Ward. IcedAstroGrep kommt KEINERLEI GARANTIE. Dies ist freie Software, und Sie sind herzlich eingeladen, um sie unter bestimmten Bedingungen weitergeben dürfen."/>
@@ -141,7 +136,6 @@
    </screen>
 
    <screen name="frmOptions" value="Einstellungen">
-      <control name="chkRightClickOption" value="Auf &amp;Rechtsklick um Ordnereinstellungen öffnen" />
       <control name="lblStoredPaths" value="Anzahl der zuletzt benutzten Pfade." />
       <control name="btnEdit" value="&amp;Bearbeiten..." />
       <control name="btnRemove" value="&amp;Löschen" />
@@ -183,7 +177,6 @@
       <control name="chkUseEncodingCache" value="Zwischenspeicher für erkannte Kodierungen aktivieren"/>
       <control name="btnCacheClear" value="Zwischenspeicher leeren"/>
       <control name="lblForceEncoding" value="Kodierung erzwingen"/>
-      <control name="ThemeGroup" value="Thema"/>
    </screen>
 
    <screen name="frmPrint" value="Drucken">
@@ -225,11 +218,6 @@
       <control name="sbtnStatus" value="Status"/>
       <control name="sbtnExclusions" value="Ausschlüsse"/>
       <control name="sbtnError" value="Fehler"/>
-   </screen>
-
-   <screen name="frmCheckForUpdateTemp" value="Auf Updates prüfen">
-      <control name="btnOK" value="&amp;OK"/>
-      <control name="lblVersionCheck" value="Suche nach Updates..." />
    </screen>
 
    <screen name="frmAddEditFileEncoding" value="Dateikodierung">

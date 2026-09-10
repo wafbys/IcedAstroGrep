@@ -17,16 +17,6 @@ namespace IcedAstroGrep.Core
 
 		public static string RegExHelpUrl = "https://learn.microsoft.com/dotnet/standard/base-types/regular-expression-language-quick-reference";
 
-		public static string WebsiteUrl = LicenseUrl;
-
-		public static string HelpUrl = RegExHelpUrl;
-
-		public static string DonationUrl = string.Empty;
-
-		public static string DownloadUrl = string.Empty;
-
-		public static string VersionUrl = string.Empty;
-
 		/// <summary>Upstream project this fork is based on.</summary>
 		public static string UpstreamName = "AstroGrep";
 

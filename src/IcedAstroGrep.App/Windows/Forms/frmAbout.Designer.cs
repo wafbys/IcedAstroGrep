@@ -28,7 +28,6 @@
       #region Windows Form Designer generated code
       private System.Windows.Forms.PictureBox picIcon;
       private System.Windows.Forms.Panel HeaderPanel;
-      private System.Windows.Forms.LinkLabel lnkHomePage;
       private System.Windows.Forms.LinkLabel LicenseLinkLabel;
       private System.Windows.Forms.Label lblDescription;
       private System.Windows.Forms.Label lblDisclaimer;
@@ -39,7 +38,6 @@
       {
 			this.components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmAbout));
-			this.lnkHomePage = new System.Windows.Forms.LinkLabel();
 			this.LicenseLinkLabel = new System.Windows.Forms.LinkLabel();
 			this.HeaderPanel = new System.Windows.Forms.Panel();
 			this.picIcon = new System.Windows.Forms.PictureBox();
@@ -52,20 +50,6 @@
 			this.HeaderPanel.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.picIcon)).BeginInit();
 			this.SuspendLayout();
-			// 
-			// lnkHomePage
-			// 
-			this.lnkHomePage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.lnkHomePage.AutoSize = true;
-			this.lnkHomePage.LinkColor = System.Drawing.SystemColors.HotTrack;
-			this.lnkHomePage.Location = new System.Drawing.Point(12, 246);
-			this.lnkHomePage.Name = "lnkHomePage";
-			this.lnkHomePage.Size = new System.Drawing.Size(130, 15);
-			this.lnkHomePage.TabIndex = 2;
-			this.lnkHomePage.TabStop = true;
-			this.lnkHomePage.Text = "IcedAstroGrep Home Page";
-			this.toolTip1.SetToolTip(this.lnkHomePage, "http://astrogrep.sourceforge.net");
-			this.lnkHomePage.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lnkHomePage_LinkClicked);
 			// 
 			// LicenseLinkLabel
 			// 
@@ -164,7 +148,6 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
 			this.ClientSize = new System.Drawing.Size(584, 270);
 			this.Controls.Add(this.LicenseLinkLabel);
-			this.Controls.Add(this.lnkHomePage);
 			this.Controls.Add(this.lblDisclaimer);
 			this.Controls.Add(this.HeaderPanel);
 			this.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));

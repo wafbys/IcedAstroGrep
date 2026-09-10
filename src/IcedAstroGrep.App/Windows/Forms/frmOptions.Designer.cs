@@ -37,8 +37,6 @@ namespace IcedAstroGrep.Windows.Forms
       {
 			this.tbcOptions = new System.Windows.Forms.TabControl();
 			this.tabGeneral = new System.Windows.Forms.TabPage();
-			this.ThemeGroup = new System.Windows.Forms.GroupBox();
-			this.cboTheme = new System.Windows.Forms.ComboBox();
 			this.chkLabelColor = new System.Windows.Forms.CheckBox();
 			this.chkSaveExclusionsPosition = new System.Windows.Forms.CheckBox();
 			this.chkSaveMessagesPosition = new System.Windows.Forms.CheckBox();
@@ -47,7 +45,6 @@ namespace IcedAstroGrep.Windows.Forms
 			this.ShortcutGroup = new System.Windows.Forms.GroupBox();
 			this.chkStartMenuShortcut = new System.Windows.Forms.CheckBox();
 			this.chkDesktopShortcut = new System.Windows.Forms.CheckBox();
-			this.chkRightClickOption = new System.Windows.Forms.CheckBox();
 			this.LanguageGroup = new System.Windows.Forms.GroupBox();
 			this.cboLanguage = new System.Windows.Forms.ComboBox();
 			this.cboPathMRUCount = new System.Windows.Forms.ComboBox();
@@ -105,7 +102,6 @@ namespace IcedAstroGrep.Windows.Forms
 			this.btnCancel = new System.Windows.Forms.Button();
 			this.tbcOptions.SuspendLayout();
 			this.tabGeneral.SuspendLayout();
-			this.ThemeGroup.SuspendLayout();
 			this.ShortcutGroup.SuspendLayout();
 			this.LanguageGroup.SuspendLayout();
 			this.tabFileEncoding.SuspendLayout();
@@ -137,7 +133,6 @@ namespace IcedAstroGrep.Windows.Forms
 			// 
 			// tabGeneral
 			// 
-			this.tabGeneral.Controls.Add(this.ThemeGroup);
 			this.tabGeneral.Controls.Add(this.chkLabelColor);
 			this.tabGeneral.Controls.Add(this.chkSaveExclusionsPosition);
 			this.tabGeneral.Controls.Add(this.chkSaveMessagesPosition);
@@ -153,27 +148,6 @@ namespace IcedAstroGrep.Windows.Forms
 			this.tabGeneral.TabIndex = 0;
 			this.tabGeneral.Text = "General";
 			this.tabGeneral.UseVisualStyleBackColor = true;
-			// 
-			// ThemeGroup
-			// 
-			this.ThemeGroup.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.ThemeGroup.Controls.Add(this.cboTheme);
-			this.ThemeGroup.Location = new System.Drawing.Point(281, 154);
-			this.ThemeGroup.Name = "ThemeGroup";
-			this.ThemeGroup.Size = new System.Drawing.Size(264, 60);
-			this.ThemeGroup.TabIndex = 10;
-			this.ThemeGroup.TabStop = false;
-			this.ThemeGroup.Text = "Theme";
-			// 
-			// cboTheme
-			// 
-			this.cboTheme.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.cboTheme.FormattingEnabled = true;
-			this.cboTheme.Location = new System.Drawing.Point(16, 24);
-			this.cboTheme.Name = "cboTheme";
-			this.cboTheme.Size = new System.Drawing.Size(144, 23);
-			this.cboTheme.TabIndex = 5;
 			// 
 			// chkLabelColor
 			// 
@@ -232,10 +206,9 @@ namespace IcedAstroGrep.Windows.Forms
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.ShortcutGroup.Controls.Add(this.chkStartMenuShortcut);
 			this.ShortcutGroup.Controls.Add(this.chkDesktopShortcut);
-			this.ShortcutGroup.Controls.Add(this.chkRightClickOption);
 			this.ShortcutGroup.Location = new System.Drawing.Point(8, 44);
 			this.ShortcutGroup.Name = "ShortcutGroup";
-			this.ShortcutGroup.Size = new System.Drawing.Size(537, 104);
+			this.ShortcutGroup.Size = new System.Drawing.Size(537, 80);
 			this.ShortcutGroup.TabIndex = 4;
 			this.ShortcutGroup.TabStop = false;
 			this.ShortcutGroup.Text = "Shortcuts";
@@ -244,7 +217,7 @@ namespace IcedAstroGrep.Windows.Forms
 			// 
 			this.chkStartMenuShortcut.AutoSize = true;
 			this.chkStartMenuShortcut.BackColor = System.Drawing.Color.Transparent;
-			this.chkStartMenuShortcut.Location = new System.Drawing.Point(6, 72);
+			this.chkStartMenuShortcut.Location = new System.Drawing.Point(6, 48);
 			this.chkStartMenuShortcut.Name = "chkStartMenuShortcut";
 			this.chkStartMenuShortcut.Size = new System.Drawing.Size(134, 19);
 			this.chkStartMenuShortcut.TabIndex = 7;
@@ -255,23 +228,12 @@ namespace IcedAstroGrep.Windows.Forms
 			// 
 			this.chkDesktopShortcut.AutoSize = true;
 			this.chkDesktopShortcut.BackColor = System.Drawing.Color.Transparent;
-			this.chkDesktopShortcut.Location = new System.Drawing.Point(6, 48);
+			this.chkDesktopShortcut.Location = new System.Drawing.Point(6, 24);
 			this.chkDesktopShortcut.Name = "chkDesktopShortcut";
 			this.chkDesktopShortcut.Size = new System.Drawing.Size(119, 19);
 			this.chkDesktopShortcut.TabIndex = 6;
 			this.chkDesktopShortcut.Text = "Desktop Shortcut";
 			this.chkDesktopShortcut.UseVisualStyleBackColor = false;
-			// 
-			// chkRightClickOption
-			// 
-			this.chkRightClickOption.AutoSize = true;
-			this.chkRightClickOption.BackColor = System.Drawing.Color.Transparent;
-			this.chkRightClickOption.Location = new System.Drawing.Point(6, 24);
-			this.chkRightClickOption.Name = "chkRightClickOption";
-			this.chkRightClickOption.Size = new System.Drawing.Size(193, 19);
-			this.chkRightClickOption.TabIndex = 5;
-			this.chkRightClickOption.Text = "Set right-click option on folders";
-			this.chkRightClickOption.UseVisualStyleBackColor = false;
 			// 
 			// LanguageGroup
 			// 
@@ -928,7 +890,6 @@ namespace IcedAstroGrep.Windows.Forms
 			this.tbcOptions.ResumeLayout(false);
 			this.tabGeneral.ResumeLayout(false);
 			this.tabGeneral.PerformLayout();
-			this.ThemeGroup.ResumeLayout(false);
 			this.ShortcutGroup.ResumeLayout(false);
 			this.ShortcutGroup.PerformLayout();
 			this.LanguageGroup.ResumeLayout(false);
@@ -979,7 +940,6 @@ namespace IcedAstroGrep.Windows.Forms
       private System.Windows.Forms.GroupBox ShortcutGroup;
       private System.Windows.Forms.CheckBox chkStartMenuShortcut;
       private System.Windows.Forms.CheckBox chkDesktopShortcut;
-      private System.Windows.Forms.CheckBox chkRightClickOption;
       private Label lblCurrentFont;
       private Button btnFindFont;
       private CheckBox chkShowExclusionErrorMessage;
@@ -1015,7 +975,5 @@ namespace IcedAstroGrep.Windows.Forms
       private Label lblResultsLongLineCount;
       private NumericUpDown numResultsBeforeAfterCount;
       private NumericUpDown numResultsLongLineCount;
-		private GroupBox ThemeGroup;
-		private ComboBox cboTheme;
 	}
 }

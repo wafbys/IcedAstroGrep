@@ -84,14 +84,10 @@
          <menuitem index="3" value="&amp;Options" />
       </menu>
       <menu index="4" value="&amp;Help">
-         <menuitem index="0" value="&amp;View Help" />
-         <menuitem index="1" value="&amp;Regular Expressions" />
-         <menuitem index="2" value="&amp;Log File" />
-         <menuitem index="3" value="-" />
-         <menuitem index="4" value="&amp;Check for Updates..." />
-         <menuitem index="5" value="-" />
-         <menuitem index="6" value="&amp;Donate" />
-         <menuitem index="7" value="&amp;About IcedAstroGrep" />
+         <menuitem index="0" value="&amp;Regular Expressions" />
+         <menuitem index="1" value="&amp;Log File" />
+         <menuitem index="2" value="-" />
+         <menuitem index="3" value="&amp;About IcedAstroGrep" />
       </menu>
       
       <!-- status bar items default state-->
@@ -118,7 +114,6 @@
    </screen>
    
    <screen name="frmAbout" value="About {0}">
-      <control name="lnkHomePage" value="{0} Home Page" />
       <control name="LicenseLinkLabel" value="GNU License"/>
       <control name="CopyrightLabel" value="Copyright (C) 2002 - {0} AstroComma Inc."/>
       <control name="lblDescription" value="Additional Copyright (C) 2002 to Theodore L. Ward. IcedAstroGrep comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it under certain conditions."/>
@@ -141,7 +136,6 @@
    </screen>
    
    <screen name="frmOptions" value="Options">
-      <control name="chkRightClickOption" value="&amp;Set right-click option on folders" />
       <control name="lblStoredPaths" value="Number of most recently used paths to store" />
       <control name="btnEdit" value="&amp;Edit..." />
       <control name="btnRemove" value="&amp;Delete" />
@@ -183,7 +177,6 @@
       <control name="chkUseEncodingCache" value="Enable cache for detected encodings"/>
       <control name="btnCacheClear" value="Clear Cache"/>
       <control name="lblForceEncoding" value="Force Encoding"/>
-      <control name="ThemeGroup" value="Theme"/>
    </screen>
    
    <screen name="frmPrint" value="Print">
@@ -225,10 +218,6 @@
       <control name="sbtnStatus" value="Status"/>
       <control name="sbtnExclusions" value="Exclusion"/>
       <control name="sbtnError" value="Error"/>
-   </screen>
-
-   <screen name="frmCheckForUpdateTemp" value="Check for Updates">
-      <control name="lblVersionCheck" value="Checking for updates..." />
    </screen>
 
    <screen name="frmAddEditFileEncoding" value="File Encoding">

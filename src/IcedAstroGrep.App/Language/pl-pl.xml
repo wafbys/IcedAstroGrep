@@ -84,14 +84,10 @@
          <menuitem index="3" value="&amp;Ustawienia" />
       </menu>
       <menu index="4" value="Po&amp;moc">
-         <menuitem index="0" value="&amp;Wyświetl pomoc" />
-         <menuitem index="1" value="Wyrażenia &amp;regularne" />
-         <menuitem index="2" value="Plik &amp;dziennika" />
-         <menuitem index="3" value="-" />
-         <menuitem index="4" value="Sprawdź dostępność &amp;aktualizacji..." />
-         <menuitem index="5" value="-" />
-         <menuitem index="6" value="&amp;Podarować" />
-         <menuitem index="7" value="&amp;Informacje o IcedAstroGrep" />
+         <menuitem index="0" value="Wyrażenia &amp;regularne" />
+         <menuitem index="1" value="Plik &amp;dziennika" />
+         <menuitem index="2" value="-" />
+         <menuitem index="3" value="&amp;Informacje o IcedAstroGrep" />
       </menu>
       
       <!-- status bar items default state-->
@@ -118,7 +114,6 @@
    </screen>
    
    <screen name="frmAbout" value="Informacje o {0}">
-      <control name="lnkHomePage" value="Strona domowa {0}" />
       <control name="LicenseLinkLabel" value="Licencja GNU"/>
       <control name="CopyrightLabel" value="Prawa autorskie (C) 2002 - {0} AstroComma Inc."/>
       <control name="lblDescription" value="Dodatkowe prawa autorskie (C) 2002 dla Theodore L. Ward. IcedAstroGrep jest rozprowadzany BEZ ŻADNEJ GWARANCJI. Jest to darmowe oprogramowanie i mile widziane jest dalsze rozpowszechnianie go na określonych warunkach."/>
@@ -141,7 +136,6 @@
    </screen>
    
    <screen name="frmOptions" value="Ustawienia">
-      <control name="chkRightClickOption" value="Uaktywnij opcję wyszukiwania pod &amp;PPM na folderach" />
       <control name="lblStoredPaths" value="Liczba przechowywanych ostatnio używanych ścieżek" />
       <control name="btnEdit" value="&amp;Edytuj..." />
       <control name="btnRemove" value="&amp;Usuń" />
@@ -183,7 +177,6 @@
       <control name="chkUseEncodingCache" value="Włącz pamięć podręczną dla wykrytych kodowań"/>
       <control name="btnCacheClear" value="Wyczyść podręczną"/>
       <control name="lblForceEncoding" value="Wymuś kodowanie"/>
-      <control name="ThemeGroup" value="Motyw"/>
    </screen>
    
    <screen name="frmPrint" value="Drukuj">
@@ -225,10 +218,6 @@
       <control name="sbtnStatus" value="Stan"/>
       <control name="sbtnExclusions" value="Wykluczenia"/>
       <control name="sbtnError" value="Błędy"/>
-   </screen>
-
-   <screen name="frmCheckForUpdateTemp" value="Sprawdź dostępność aktualizacji">
-      <control name="lblVersionCheck" value="Sprawdzanie aktualizacji..." />
    </screen>
 
    <screen name="frmAddEditFileEncoding" value="Kodowanie pliku">

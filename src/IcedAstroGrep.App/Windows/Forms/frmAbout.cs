@@ -101,11 +101,7 @@ namespace IcedAstroGrep.Windows.Forms
 			Language.ProcessForm(this);
 
 			Text = string.Format(Text, ProductInformation.ApplicationName);
-			
-			lnkHomePage.Text = string.Format(lnkHomePage.Text, ProductInformation.ApplicationName);
-			lnkHomePage.Links.Add(0, lnkHomePage.Text.Length, ProductInformation.WebsiteUrl);
-			toolTip1.SetToolTip(lnkHomePage, ProductInformation.WebsiteUrl);
-			
+
 			LicenseLinkLabel.Links.Add(0, LicenseLinkLabel.Text.Length, ProductInformation.LicenseUrl);
 			toolTip1.SetToolTip(LicenseLinkLabel, ProductInformation.LicenseUrl);
 
@@ -123,19 +119,6 @@ namespace IcedAstroGrep.Windows.Forms
 		/// [Curtis_Beard] 	11/03/2005	Created
 		/// </history>
 		private void LicenseLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-		{
-			System.Diagnostics.Process.Start(e.Link.LinkData.ToString());
-		}
-
-		/// <summary>
-		/// Opens the systems default browser and displays the web link
-		/// </summary>
-		/// <param name="sender">System parm</param>
-		/// <param name="e">System parm</param>
-		/// <history>
-		/// [Curtis_Beard]	   01/11/2005	.Net Conversion
-		/// </history>
-		private void lnkHomePage_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
 			System.Diagnostics.Process.Start(e.Link.LinkData.ToString());
 		}

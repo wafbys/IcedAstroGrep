@@ -84,14 +84,10 @@
          <menuitem index="3" value="&amp;Program Indstillinger..." />
       </menu>
       <menu index="4" value="&amp;Hjælp">
-         <menuitem index="0" value="&amp;Vis Hjælp" />
-         <menuitem index="1" value="&amp;Regular Expressions" />
-         <menuitem index="2" value="&amp;logfil" />
-         <menuitem index="3" value="-" />
-         <menuitem index="4" value="&amp;Tjek for opdateringer..." />
-         <menuitem index="5" value="-" />
-         <menuitem index="6" value="&amp;Schenken" />
-         <menuitem index="7" value="&amp;Om IcedAstroGrep" />
+         <menuitem index="0" value="&amp;Regular Expressions" />
+         <menuitem index="1" value="&amp;logfil" />
+         <menuitem index="2" value="-" />
+         <menuitem index="3" value="&amp;Om IcedAstroGrep" />
       </menu>
 
       <!-- status bar items default state-->
@@ -118,7 +114,6 @@
    </screen>
    
    <screen name="frmAbout" value="Om {0}">
-      <control name="lnkHomePage" value="{0} Hjemmeside" />
       <control name="LicenseLinkLabel" value="GNU License"/>
       <control name="CopyrightLabel" value="Copyright (C) 2002 - {0} AstroComma Inc."/>
       <control name="lblDescription" value="Yderligere Copyright (C) 2002 til Theodore L. Ward. IcedAstroGrep kommer med ABSOLUT INGEN GARANTI. Dette er fri software, og du er velkommen til at redistribuere det under visse betingelser."/>
@@ -141,7 +136,6 @@
    </screen>
    
    <screen name="frmOptions" value="Indstillinger">
-      <control name="chkRightClickOption" value="Anvend søgning ved &amp;højreklik på mapper" />
       <control name="lblStoredPaths" value="Antal senest anvendte søgestier der gemmes" />
       <control name="btnEdit" value="&amp;Rediger..." />
       <control name="btnRemove" value="&amp;Slet" />
@@ -183,7 +177,6 @@
       <control name="chkUseEncodingCache" value="Aktiver cache for fundne kodninger"/>
       <control name="btnCacheClear" value="Ryd cache"/>
       <control name="lblForceEncoding" value="Force Encoding"/>
-      <control name="ThemeGroup" value="Tema"/>
    </screen>
    
    <screen name="frmPrint" value="Print">
@@ -225,11 +218,6 @@
       <control name="sbtnStatus" value="Stilling"/>
       <control name="sbtnExclusions" value="Udelukkelser"/>
       <control name="sbtnError" value="Fejl"/>
-   </screen>
-
-   <screen name="frmCheckForUpdateTemp" value="Tjek for opdateringer">
-      <control name="btnOK" value="&amp;OK"/>
-      <control name="lblVersionCheck" value="Kontrol for opdateringer..." />
    </screen>
 
    <screen name="frmAddEditFileEncoding" value="Filkodning">

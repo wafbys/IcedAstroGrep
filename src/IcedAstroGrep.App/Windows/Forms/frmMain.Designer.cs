@@ -110,12 +110,9 @@ namespace IcedAstroGrep.Windows.Forms
       private ToolStripMenuItem OptionsMenuItem;
 
       private ToolStripMenuItem HelpMenu;
-      private ToolStripMenuItem ViewHelpMenuItem;
       private ToolStripMenuItem ViewRegExHelpMenuItem;
       private ToolStripMenuItem LogFileMenuItem;
       private ToolStripSeparator HelpSep1Separator;
-      private ToolStripMenuItem CheckForUpdateMenuItem;
-      private ToolStripSeparator HelpSep2Separator;
       private ToolStripMenuItem AboutMenuItem;
 
       private void InitializeComponent()
@@ -238,13 +235,9 @@ namespace IcedAstroGrep.Windows.Forms
 			this.SaveSearchOptionsMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.OptionsMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.HelpMenu = new System.Windows.Forms.ToolStripMenuItem();
-			this.ViewHelpMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.ViewRegExHelpMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.LogFileMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.HelpSep1Separator = new System.Windows.Forms.ToolStripSeparator();
-			this.CheckForUpdateMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-			this.HelpSep2Separator = new System.Windows.Forms.ToolStripSeparator();
-			this.donateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.AboutMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.MainMenuSeparator = new Controls.ThemeSeparator();
 			this.pnlSearch.SuspendLayout();
@@ -1380,29 +1373,18 @@ namespace IcedAstroGrep.Windows.Forms
 			// HelpMenu
 			// 
 			this.HelpMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.ViewHelpMenuItem,
             this.ViewRegExHelpMenuItem,
             this.LogFileMenuItem,
             this.HelpSep1Separator,
-            this.CheckForUpdateMenuItem,
-            this.HelpSep2Separator,
-            this.donateToolStripMenuItem,
             this.AboutMenuItem});
 			this.HelpMenu.Name = "HelpMenu";
 			this.HelpMenu.Size = new System.Drawing.Size(44, 20);
 			this.HelpMenu.Text = "&Help";
 			// 
-			// ViewHelpMenuItem
-			// 
-			this.ViewHelpMenuItem.Name = "ViewHelpMenuItem";
-			this.ViewHelpMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F1;
-			this.ViewHelpMenuItem.Size = new System.Drawing.Size(180, 22);
-			this.ViewHelpMenuItem.Text = "&View Help";
-			this.ViewHelpMenuItem.Click += new System.EventHandler(this.ViewHelpMenuItem_Click);
-			// 
 			// ViewRegExHelpMenuItem
 			// 
 			this.ViewRegExHelpMenuItem.Name = "ViewRegExHelpMenuItem";
+			this.ViewRegExHelpMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F1;
 			this.ViewRegExHelpMenuItem.Size = new System.Drawing.Size(180, 22);
 			this.ViewRegExHelpMenuItem.Text = "&Regular Expressions";
 			this.ViewRegExHelpMenuItem.Click += new System.EventHandler(this.ViewRegExHelpMenuItem_Click);
@@ -1418,25 +1400,6 @@ namespace IcedAstroGrep.Windows.Forms
 			// 
 			this.HelpSep1Separator.Name = "HelpSep1Separator";
 			this.HelpSep1Separator.Size = new System.Drawing.Size(177, 6);
-			// 
-			// CheckForUpdateMenuItem
-			// 
-			this.CheckForUpdateMenuItem.Name = "CheckForUpdateMenuItem";
-			this.CheckForUpdateMenuItem.Size = new System.Drawing.Size(180, 22);
-			this.CheckForUpdateMenuItem.Text = "&Check for Updates...";
-			this.CheckForUpdateMenuItem.Click += new System.EventHandler(this.CheckForUpdateMenuItem_Click);
-			// 
-			// HelpSep2Separator
-			// 
-			this.HelpSep2Separator.Name = "HelpSep2Separator";
-			this.HelpSep2Separator.Size = new System.Drawing.Size(177, 6);
-			// 
-			// donateToolStripMenuItem
-			// 
-			this.donateToolStripMenuItem.Name = "donateToolStripMenuItem";
-			this.donateToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-			this.donateToolStripMenuItem.Text = "&Donate";
-			this.donateToolStripMenuItem.Click += new System.EventHandler(this.donateToolStripMenuItem_Click);
 			// 
 			// AboutMenuItem
 			// 
@@ -1514,7 +1477,6 @@ namespace IcedAstroGrep.Windows.Forms
          base.Dispose(disposing);
       }
 
-      private ToolStripMenuItem donateToolStripMenuItem;
       private ToolStrip ResultsToolStrip;
       private ToolStripButton ResultsZoomInButton;
       private ToolStripButton ResultsZoomOutButton;

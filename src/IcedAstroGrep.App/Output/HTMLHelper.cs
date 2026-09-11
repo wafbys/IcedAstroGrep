@@ -307,7 +307,7 @@ namespace IcedAstroGrep.Output
          // find all reg ex matches in line
          string pattern = string.Format("{0}{1}{0}", grep.SearchSpec.UseWholeWordMatching ? "\\b" : string.Empty, grep.SearchSpec.SearchText);
          RegexOptions options = grep.SearchSpec.UseCaseSensitivity ? RegexOptions.None : RegexOptions.IgnoreCase;
-         regEx = new Regex(pattern, options);
+         regEx = new Regex(pattern, options, Grep.SearchRegExTimeout);
          matchCollection = regEx.Matches(line);
 
          // loop through the matches

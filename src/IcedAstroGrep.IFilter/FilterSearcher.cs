@@ -1,4 +1,4 @@
-﻿//
+//
 // FilterSearcher.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
@@ -37,6 +37,12 @@ namespace IFilterTextReader
     /// </summary>
     public class FilterSearcher
     {
+        /// <summary>
+        /// Maximum time allowed for a single regular expression match operation.
+        /// Guards against catastrophic backtracking patterns supplied by callers.
+        /// </summary>
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
+
         #region FileContainsText
         /// <summary>
         /// Returns true when the <paramref name="textToFind"/> is found in the 
@@ -107,7 +113,7 @@ namespace IFilterTextReader
         /// <returns></returns>
         public bool FileContainsRegexMatch(string fileName, string regularExpression, bool ignoreCase = true)
         {
-            var regex = new Regex(regularExpression, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
+            var regex = new Regex(regularExpression, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None, RegexTimeout);
             using (var reader = new FilterReader(fileName))
             {
                 var line = reader.ReadLine();
@@ -132,7 +138,7 @@ namespace IFilterTextReader
         /// <returns></returns>
         public string[] GetRegexMatchesFromFile(string fileName, string regularExpression, bool ignoreCase = true)
         {
-            var regex = new Regex(regularExpression, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
+            var regex = new Regex(regularExpression, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None, RegexTimeout);
             var result = new List<string>();
 
             using (var reader = new FilterReader(fileName))

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text.Json;
+using System.Threading;
 
 using IcedAstroGrep.Core.Logging;
 
@@ -40,9 +41,23 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
    {
       private Dictionary<string, EncodingCacheItem> cache = null;
       private LinkedList<string> lruList = null;
+
+      /// <summary>
+      /// Maps a cache key to its node in <see cref="lruList"/> so recency updates and removals stay O(1)
+      /// and can never drift out of sync with the keys that actually exist in <see cref="cache"/>.
+      /// </summary>
+      private readonly Dictionary<string, LinkedListNode<string>> lruNodes = new Dictionary<string, LinkedListNode<string>>();
+
       private EncodingOptions.Performance currentPerformance = EncodingOptions.Performance.Default;
-      private static EncodingCache instance;
-      private int capacity = 150000;
+      private static readonly Lazy<EncodingCache> instance = new Lazy<EncodingCache>(() => new EncodingCache(), LazyThreadSafetyMode.ExecutionAndPublication);
+      private const int capacity = 150000;
+
+      /// <summary>
+      /// Guards <see cref="cache"/>, <see cref="lruList"/> and <see cref="lruNodes"/>.
+      /// The cache is process wide and is read/written from the search background thread.
+      /// </summary>
+      private readonly object syncRoot = new object();
+
       private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
       {
          IncludeFields = true
@@ -58,11 +73,7 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       {
          get
          {
-            if (EncodingCache.instance == null)
-            {
-               EncodingCache.instance = new EncodingCache();
-            }
-            return EncodingCache.instance;
+            return instance.Value;
          }
       }
 
@@ -88,7 +99,10 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       /// </history>
       public bool ContainsKey(string key)
       {
-         return cache.ContainsKey(key);
+         lock (syncRoot)
+         {
+            return cache.ContainsKey(key);
+         }
       }
 
       /// <summary>
@@ -101,10 +115,17 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       /// </history>
       public EncodingCacheItem GetItem(string key)
       {
-         if (cache.ContainsKey(key))
-            return cache[key];
+         lock (syncRoot)
+         {
+            if (cache.TryGetValue(key, out EncodingCacheItem item))
+            {
+               // mark as most recently used so eviction drops the real least recently used entry
+               Touch(key);
+               return item;
+            }
 
-         return null;
+            return null;
+         }
       }
 
       /// <summary>
@@ -116,10 +137,14 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       /// </history>
       public void RemoveItem(string key)
       {
-         if (cache.ContainsKey(key))
+         lock (syncRoot)
          {
-            // Remove it from current position
-            lruList.Remove(key);
+            // remove from the dictionary as well, otherwise the entry would be written back to disk
+            // on the next Save and the LRU bookkeeping would drift away from the actual contents
+            if (cache.Remove(key))
+            {
+               RemoveNode(key);
+            }
          }
       }
 
@@ -133,30 +158,66 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       /// </history>
       public void SetItem(string key, EncodingCacheItem item)
       {
-         if (cache.ContainsKey(key))
+         lock (syncRoot)
          {
-            // update item incase of change
-            cache[key] = item;
-            
-            // Remove it from current position
-            lruList.Remove(key);
-
-            // Add it again, this will result in it being placed on top
-            lruList.AddLast(key);
-         }
-         else
-         {
-            cache.Add(key, item);
-
-            if (cache.Count > capacity)
+            if (cache.ContainsKey(key))
             {
-               // over capacity so remove least used item and key
-               cache.Remove(lruList.First.Value);
-               lruList.RemoveFirst();
+               // update item incase of change
+               cache[key] = item;
+            }
+            else
+            {
+               cache.Add(key, item);
+
+               // over capacity so remove the least recently used entries; driven off cache.Count so the
+               // eviction can never walk off the end of an out of sync LRU list
+               while (cache.Count > capacity && lruList.First != null)
+               {
+                  string leastUsedKey = lruList.First.Value;
+                  lruList.RemoveFirst();
+                  lruNodes.Remove(leastUsedKey);
+                  cache.Remove(leastUsedKey);
+               }
             }
 
-            lruList.AddLast(key);
+            // move the key to the top of the LRU list
+            Touch(key);
          }
+      }
+
+      /// <summary>
+      /// Moves the given key to the most recently used position of the LRU list.
+      /// The caller must hold <see cref="syncRoot"/>.
+      /// </summary>
+      /// <param name="key">Unique key</param>
+      private void Touch(string key)
+      {
+         RemoveNode(key);
+         lruNodes[key] = lruList.AddLast(key);
+      }
+
+      /// <summary>
+      /// Removes the given key from the LRU list, leaving the dictionary untouched.
+      /// The caller must hold <see cref="syncRoot"/>.
+      /// </summary>
+      /// <param name="key">Unique key</param>
+      private void RemoveNode(string key)
+      {
+         if (lruNodes.TryGetValue(key, out LinkedListNode<string> node))
+         {
+            lruList.Remove(node);
+            lruNodes.Remove(key);
+         }
+      }
+
+      /// <summary>
+      /// Empties the in-memory cache. The caller must hold <see cref="syncRoot"/>.
+      /// </summary>
+      private void ClearInternal()
+      {
+         cache.Clear();
+         lruList.Clear();
+         lruNodes.Clear();
       }
 
       /// <summary>
@@ -169,7 +230,15 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       public void Save(EncodingOptions.Performance performanceSetting)
       {
          string path = GetFilePath(performanceSetting);
-         LogClient.Instance.Logger.Info("Saving encoding cache [{0} items] to disk at {1}", cache.Count, path);
+
+         // take a snapshot under the lock so the (slow) disk write does not block a concurrent search
+         Dictionary<string, EncodingCacheItem> snapshot;
+         lock (syncRoot)
+         {
+            snapshot = new Dictionary<string, EncodingCacheItem>(cache);
+         }
+
+         LogClient.Instance.Logger.Info("Saving encoding cache [{0} items] to disk at {1}", snapshot.Count, path);
 
          try
          {
@@ -184,7 +253,7 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
             {
                using (var deflate = new DeflateStream(fs, CompressionMode.Compress))
                {
-                  JsonSerializer.Serialize(deflate, cache, JsonOptions);
+                  JsonSerializer.Serialize(deflate, snapshot, JsonOptions);
                }
             }
          }
@@ -204,46 +273,49 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       /// </history>
       public void Load(EncodingOptions.Performance performanceSetting)
       {
-         if (cache != null && cache.Count > 0 && performanceSetting == currentPerformance)
+         lock (syncRoot)
          {
-            LogClient.Instance.Logger.Info("Encoding cache already loaded [{0} items]", cache.Count);
-            return;
-         }
-
-         string path = GetFilePath(performanceSetting);
-         LogClient.Instance.Logger.Info("Loading encoding cache from disk at {0}", path);
-
-         try
-         {
-            Clear();
-
-            if (File.Exists(path))
+            if (cache != null && cache.Count > 0 && performanceSetting == currentPerformance)
             {
-               using (FileStream fs = new FileStream(path, FileMode.Open))
+               LogClient.Instance.Logger.Info("Encoding cache already loaded [{0} items]", cache.Count);
+               return;
+            }
+
+            string path = GetFilePath(performanceSetting);
+            LogClient.Instance.Logger.Info("Loading encoding cache from disk at {0}", path);
+
+            try
+            {
+               ClearInternal();
+
+               if (File.Exists(path))
                {
-                  using (var deflate = new DeflateStream(fs, CompressionMode.Decompress))
+                  using (FileStream fs = new FileStream(path, FileMode.Open))
                   {
-                     var loaded = JsonSerializer.Deserialize<Dictionary<string, EncodingCacheItem>>(deflate, JsonOptions);
-                     if (loaded != null)
+                     using (var deflate = new DeflateStream(fs, CompressionMode.Decompress))
                      {
-                        cache = loaded;
+                        var loaded = JsonSerializer.Deserialize<Dictionary<string, EncodingCacheItem>>(deflate, JsonOptions);
+                        if (loaded != null)
+                        {
+                           cache = loaded;
+                        }
+
+                        foreach (var key in cache.Keys)
+                        {
+                           lruNodes[key] = lruList.AddLast(key);
+                        }
+
+                        currentPerformance = performanceSetting;
+
+                        LogClient.Instance.Logger.Info("Encoding cache loaded successfully with {0} items", cache.Count);
                      }
-
-                     foreach (var key in cache.Keys)
-                     {
-                        lruList.AddLast(key);
-                     }
-
-                     currentPerformance = performanceSetting;
-
-                     LogClient.Instance.Logger.Info("Encoding cache loaded successfully with {0} items", cache.Count);
                   }
                }
             }
-         }
-         catch (Exception ex)
-         {
-            LogClient.Instance.Logger.Error("Loading generic error: {0}", LogClient.GetAllExceptions(ex));
+            catch (Exception ex)
+            {
+               LogClient.Instance.Logger.Error("Loading generic error: {0}", LogClient.GetAllExceptions(ex));
+            }
          }
       }
 
@@ -256,8 +328,10 @@ namespace IcedAstroGrep.Core.EncodingDetection.Caching
       /// </history>
       public void Clear(bool deletePhysical = false)
       {
-         cache.Clear();
-         lruList.Clear();
+         lock (syncRoot)
+         {
+            ClearInternal();
+         }
 
          if (deletePhysical)
          {

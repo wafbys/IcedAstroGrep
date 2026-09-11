@@ -66,6 +66,15 @@ namespace IcedAstroGrep.Core
 
 		private readonly int userFilterCount = 0;
 		private CancellationTokenSource _cts;
+		private Thread _searchThread;
+		private Regex _searchRegEx;
+
+		/// <summary>
+		/// Maximum time allowed for a single regular expression match operation.
+		/// Guards against catastrophic backtracking patterns (e.g. <c>(a+)+$</c>) which would
+		/// otherwise hang the search thread forever and make cancellation ineffective.
+		/// </summary>
+		public static readonly TimeSpan SearchRegExTimeout = TimeSpan.FromSeconds(2);
 
 		/// <summary>
 		/// Initializes a new instance of the Grep class.
@@ -199,6 +208,8 @@ namespace IcedAstroGrep.Core
 
 		/// <summary>
 		/// Retrieve a <see cref="Regex"/> based on the given <see cref="ISearchSpec"/>.
+		/// The returned expression always carries a match timeout (see <see cref="SearchRegExTimeout"/>)
+		/// so that a pathological pattern cannot block the calling thread indefinitely.
 		/// </summary>
 		/// <param name="searchSpec">Current <see cref="ISearchSpec"/></param>
 		/// <returns><see cref="RegEx"/> if necessary, otherwise null</returns>
@@ -223,7 +234,7 @@ namespace IcedAstroGrep.Core
 
 				var pattern = string.Format("{0}{1}{0}", boundary, search);
 
-				regEx = new Regex(pattern, options);
+				regEx = new Regex(pattern, options, SearchRegExTimeout);
 			}
 
 			return regEx;
@@ -306,6 +317,35 @@ namespace IcedAstroGrep.Core
 		}
 
 		/// <summary>
+		/// Cancels an asynchronous grep request and blocks until the search thread has finished.
+		/// Use this instead of <see cref="Abort"/> when a new search is about to start, so the old
+		/// search cannot keep running and race the new one over the shared plugin instances and
+		/// the on-disk encoding cache.
+		/// </summary>
+		/// <param name="timeout">Maximum time to wait for the search thread to finish</param>
+		/// <returns>true if the search thread has finished, false if it is still running after the timeout</returns>
+		public bool AbortAndWait(TimeSpan timeout)
+		{
+			Abort();
+
+			var thread = _searchThread;
+			if (thread == null)
+			{
+				return true;
+			}
+
+			try
+			{
+				return thread.Join(timeout);
+			}
+			catch (ThreadStateException)
+			{
+				// thread was never started or has already been reclaimed
+				return true;
+			}
+		}
+
+		/// <summary>
 		/// Begins an asynchronous grep of files for a specified text.
 		/// </summary>
 		/// <history>
@@ -315,8 +355,8 @@ namespace IcedAstroGrep.Core
 		{
 			_cts?.Dispose();
 			_cts = new CancellationTokenSource();
-			var thread = new Thread(StartGrep) { IsBackground = true };
-			thread.Start();
+			_searchThread = new Thread(StartGrep) { IsBackground = true };
+			_searchThread.Start();
 		}
 
 		/// <summary>
@@ -333,6 +373,9 @@ namespace IcedAstroGrep.Core
 		public void Execute()
 		{
 			ThrowIfCancelled();
+
+			// build the search regular expression once per search instead of once per file
+			_searchRegEx = BuildSearchRegEx(SearchSpec);
 
 			// reset count
 			TotalFilesSearched = 0;
@@ -757,10 +800,73 @@ namespace IcedAstroGrep.Core
 			{
 				throw;
 			}
+			catch (SearchRegexTimeoutException)
+			{
+				// the pattern itself is unusable, report it for the whole search instead of
+				// retrying (and timing out again) for every remaining file
+				throw;
+			}
 			catch (Exception ex)
 			{
 				OnSearchError(SourceFile, ex);
 			}
+		}
+
+		/// <summary>
+		/// Evaluates the regular expression against the given line and returns all matches.
+		/// The match collection is fully evaluated inside this method because
+		/// <see cref="Regex.Matches(string)"/> is lazy: the timeout would otherwise be raised later,
+		/// when the collection is first enumerated, outside of any timeout guard.
+		/// </summary>
+		/// <param name="regEx">Expression to evaluate</param>
+		/// <param name="line">Line of text to evaluate</param>
+		/// <returns>All matches found in the line</returns>
+		private static MatchCollection EvaluateAllMatches(Regex regEx, string line)
+		{
+			try
+			{
+				var matches = regEx.Matches(line);
+
+				// force evaluation while the timeout can still be converted
+				_ = matches.Count;
+
+				return matches;
+			}
+			catch (RegexMatchTimeoutException ex)
+			{
+				throw CreateSearchRegexTimeoutException(ex);
+			}
+		}
+
+		/// <summary>
+		/// Evaluates the regular expression against the given line and returns the first match.
+		/// </summary>
+		/// <param name="regEx">Expression to evaluate</param>
+		/// <param name="line">Line of text to evaluate</param>
+		/// <returns>The first match, or null when the line produced no matches</returns>
+		private static Match EvaluateFirstMatch(Regex regEx, string line)
+		{
+			try
+			{
+				return regEx.Match(line);
+			}
+			catch (RegexMatchTimeoutException ex)
+			{
+				throw CreateSearchRegexTimeoutException(ex);
+			}
+		}
+
+		/// <summary>
+		/// Converts a <see cref="RegexMatchTimeoutException"/> into a <see cref="SearchRegexTimeoutException"/>
+		/// carrying a message that is meaningful to the user.
+		/// </summary>
+		/// <param name="ex">The timeout exception raised by the regular expression engine</param>
+		/// <returns>A <see cref="SearchRegexTimeoutException"/> to be thrown</returns>
+		private static SearchRegexTimeoutException CreateSearchRegexTimeoutException(RegexMatchTimeoutException ex)
+		{
+			return new SearchRegexTimeoutException(
+				string.Format("The search pattern took longer than {0:0.#} seconds to evaluate, so the search was stopped. The pattern may cause catastrophic backtracking; please simplify it.", SearchRegExTimeout.TotalSeconds),
+				ex);
 		}
 
 		/// <summary>
@@ -816,7 +922,7 @@ namespace IcedAstroGrep.Core
 			StreamReader _reader = null;
 			int _lineNumber = 0;
 			MatchResult match = null;
-			Regex _regularExp = BuildSearchRegEx(SearchSpec);
+			Regex _regularExp = _searchRegEx;
 			MatchCollection _regularExpCol = null;
 			bool _hitOccurred = false;
 			bool _fileNameDisplayed = false;
@@ -1052,12 +1158,18 @@ namespace IcedAstroGrep.Core
 					{
 						_lineNumber += 1;
 
+						// give cancellation a chance to take effect inside a large file
+						if ((_lineNumber & 0x3FF) == 0)
+						{
+							ThrowIfCancelled();
+						}
+
 						int _posInStr = -1;
 						if (SearchSpec.UseRegularExpressions)
 						{
 							if (textLine.Length > 0)
 							{
-								_regularExpCol = _regularExp.Matches(textLine);
+								_regularExpCol = EvaluateAllMatches(_regularExp, textLine);
 
 								if (_regularExpCol.Count > 0)
 								{
@@ -1076,7 +1188,8 @@ namespace IcedAstroGrep.Core
 							if (SearchSpec.UseWholeWordMatching)
 							{
 								// if match is found, also check against our internal line hit count method to be sure they are in sync
-								Match mtc = _regularExp.Match(textLine);
+								Match mtc = EvaluateFirstMatch(_regularExp, textLine);
+
 								if (mtc != null && mtc.Success && RetrieveLineMatches(textLine, SearchSpec).Count > 0)
 								{
 									if (SearchSpec.UseNegation)

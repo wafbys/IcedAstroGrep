@@ -55,6 +55,17 @@ namespace IcedAstroGrep.Windows.Forms
 	/// </history>
 	public partial class frmMain : BaseForm
 	{
+		/// <summary>
+		/// Input used to probe a user supplied regular expression for catastrophic backtracking.
+		/// Patterns such as <c>(a+)+$</c> explode on this input instead of matching instantly.
+		/// </summary>
+		private const string REGEX_VALIDATION_PROBE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!";
+
+		/// <summary>
+		/// Maximum time to wait for a previous search thread to stop before starting a new search.
+		/// </summary>
+		private static readonly TimeSpan PREVIOUS_SEARCH_WAIT_TIMEOUT = TimeSpan.FromSeconds(10);
+
 		private readonly LogItems LogItems = new LogItems();
 		private readonly List<ICSharpCode.AvalonEdit.Document.TextAnchor> matchAnchors = new List<ICSharpCode.AvalonEdit.Document.TextAnchor>();
 		private readonly ContextMenuStrip TxtHitsContextMenuStrip = new ContextMenuStrip();
@@ -4674,6 +4685,16 @@ namespace IcedAstroGrep.Windows.Forms
 					__Grep.SearchingFileByPlugin -= ReceiveSearchingFileByPlugin;
 					__Grep.FileEncodingDetected -= ReceiveFileEncodingDetected;
 
+					// stop the previous search and wait for it to finish before starting a new one.
+					// Otherwise the old search keeps running and races this one over the shared plugin
+					// instances and the on-disk encoding cache.
+					// NOTE: events are detached above first, so the old search can no longer marshal
+					// callbacks onto this (UI) thread while we block waiting for it.
+					if (!__Grep.AbortAndWait(PREVIOUS_SEARCH_WAIT_TIMEOUT))
+					{
+						LogClient.Instance.Logger.Warn("Previous search did not stop within {0} seconds; starting a new search anyway.", PREVIOUS_SEARCH_WAIT_TIMEOUT.TotalSeconds);
+					}
+
 					__Grep = null;
 				}
 
@@ -4967,7 +4988,11 @@ namespace IcedAstroGrep.Windows.Forms
 					// test reg ex
 					try
 					{
-						var reg = new Regex(cboSearchForText.Text, RegexOptions.IgnoreCase);
+						var reg = new Regex(cboSearchForText.Text, RegexOptions.IgnoreCase, Grep.SearchRegExTimeout);
+
+						// probe the pattern with an input that triggers catastrophic backtracking so a
+						// pathological expression is rejected here instead of aborting the search later
+						reg.IsMatch(REGEX_VALIDATION_PROBE);
 					}
 					catch (Exception ex)
 					{

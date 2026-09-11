@@ -34,6 +34,13 @@ namespace IFilterTextReader
     /// </summary>
     public class FilterReaderOptions
     {
+        #region Constants
+        /// <summary>
+        /// Default value of <see cref="Timeout"/>: one minute per document.
+        /// </summary>
+        public const int DefaultTimeoutMilliseconds = 60 * 1000;
+        #endregion
+
         #region Properties
         /// <summary>
         /// When set to <c>true</c> the <see cref="NativeMethods.IFilter"/>
@@ -57,8 +64,16 @@ namespace IFilterTextReader
         public bool ReadIntoMemory { get; set; }
 
         /// <summary>
-        /// Can be used to timeout when parsing very large files, default set to <see cref="FilterReaderTimeout.NoTimeout"/>
+        /// Can be used to timeout when parsing very large files.
+        /// Defaults to <see cref="FilterReaderTimeout.TimeoutWithException"/> so a misbehaving or
+        /// extremely slow iFilter can never block a read indefinitely; an explicit
+        /// <see cref="FilterReaderTimeout.NoTimeout"/> is required to opt out.
         /// </summary>
+        /// <remarks>
+        /// <see cref="FilterReaderTimeout.TimeoutWithException"/> is the default rather than
+        /// <see cref="FilterReaderTimeout.TimeoutOnly"/> on purpose: a timeout must be reported,
+        /// never silently presented as a completely parsed document.
+        /// </remarks>
         public FilterReaderTimeout ReaderTimeout { get; set; }
 
         /// <summary>
@@ -96,8 +111,8 @@ namespace IFilterTextReader
             DisableEmbeddedContent = false;
             IncludeProperties = false;
             ReadIntoMemory = false;
-            ReaderTimeout = FilterReaderTimeout.NoTimeout;
-            Timeout = -1;
+            ReaderTimeout = FilterReaderTimeout.TimeoutWithException;
+            Timeout = DefaultTimeoutMilliseconds;
             DoCleanUpCharacters = true;
             WordBreakSeparator = "-";
             ChunkTypeSeparator = " ";

@@ -152,6 +152,20 @@ namespace IFilterTextReader
         private bool _carriageReturnFound;
 
         /// <summary>
+        /// Consecutive read loop iterations that may produce neither characters nor a new chunk
+        /// before the read is abandoned with an <see cref="IFFilterPartiallyFiltered"/> error.
+        /// Well behaved filters either advance the chunk or yield text on every iteration, so this
+        /// only ever trips on a filter that is genuinely stuck.
+        /// </summary>
+        private const int MaxNoProgressIterations = 64;
+
+        /// <summary>
+        /// Guards <see cref="Dispose(bool)"/> against releasing the filter more than once; the
+        /// finalizer calls the same method, and a second release would throw from it.
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
         /// Collection of metadata properties extracted from file
         /// </summary>
         public readonly Dictionary<string, List<object>> MetaDataProperties = new Dictionary<string, List<object>>();
@@ -388,7 +402,9 @@ namespace IFilterTextReader
         {
             if (Timeout()) return -1;
 
-            var chr = new char[0];
+            // must hold at least the single character being asked for: a zero length buffer made
+            // Read(char[], int, int) throw ArgumentException on every call
+            var chr = new char[1];
             var read = Read(chr, 0, 1);
             if (read == 1)
                 return chr[0];
@@ -435,8 +451,32 @@ namespace IFilterTextReader
             if (Timeout())
                 return 0;
 
+            // A filter that neither yields characters nor moves on to a new chunk would spin in this
+            // loop forever, in pure managed code, with no way for the caller to cancel it. Track the
+            // loop's identity and stop with a visible error instead of burning a core.
+            var noProgressIterations = 0;
+            var lastProgressCharsRead = -1;
+            var lastProgressChunkId = int.MinValue;
+
             while (!_done && charsRead < count)
             {
+                if (charsRead == lastProgressCharsRead && _chunk.idChunk == lastProgressChunkId)
+                {
+                    noProgressIterations++;
+
+                    if (noProgressIterations > MaxNoProgressIterations)
+                    {
+                        throw new IFFilterPartiallyFiltered(
+                            $"The IFilter stopped making progress after {MaxNoProgressIterations} attempts while reading '{_fileName}'");
+                    }
+                }
+                else
+                {
+                    noProgressIterations = 0;
+                    lastProgressCharsRead = charsRead;
+                    lastProgressChunkId = _chunk.idChunk;
+                }
+
                 if (_charsLeftFromLastRead != null)
                 {
                     var charsToCopy = _charsLeftFromLastRead.Length < count - charsRead
@@ -499,6 +539,16 @@ namespace IFilterTextReader
                             _done = true;
                             _endOfChunks = true;
                             break;
+
+                        default:
+                            // S_OK lands here too, and for it the value assigned above is already
+                            // correct (_chunkValid == true). For every other result (E_FAIL,
+                            // FILTER_E_NO_TEXT, E_HANDLE, E_INVALIDARG, ...) the same assignment
+                            // already left the chunk invalid, so the next iteration asks for another
+                            // chunk. Clearing it here unconditionally would discard healthy chunks.
+                            // A filter that keeps failing is bounded by the no-progress guard at the
+                            // top of the loop.
+                            break;
                     }
 
                     // If the read chunk isn't valid then continue
@@ -521,11 +571,11 @@ namespace IFilterTextReader
 
                     case NativeMethods.CHUNKSTATE.CHUNK_VALUE:
 
-                        var pvValue = new NativeMethods.PROPVARIANT();
-
-                        // To convert from our C# PropVariant to the interop IntPtr:
-                        var valuePtr = Marshal.AllocHGlobal(Marshal.SizeOf(pvValue));
-                        Marshal.StructureToPtr(pvValue, valuePtr, false);
+                        // The filter allocates the PROPVARIANT itself with CoTaskMemAlloc and hands
+                        // back its pointer, so there is nothing to preallocate: a buffer allocated
+                        // here would be overwritten by that pointer and leak on every value chunk.
+                        // The caller owns the result and releases it below.
+                        var valuePtr = IntPtr.Zero;
 
                         try
                         {
@@ -552,12 +602,17 @@ namespace IFilterTextReader
 
                                     _chunkValid = false;
                                     break;
+
+                                default:
+                                    // An unhandled result yields nothing and leaves the chunk valid,
+                                    // which would repeat this same chunk forever; drop it.
+                                    _chunkValid = false;
+                                    break;
                             }
                         }
                         finally
                         {
-                            if (valuePtr != IntPtr.Zero)
-                                Marshal.FreeHGlobal(valuePtr);
+                            ReleasePropVariant(valuePtr);
                         }
 
                         break;
@@ -600,15 +655,40 @@ namespace IFilterTextReader
                                     case NativeMethods.CHUNK_BREAKTYPE.CHUNK_EOS:
                                         breakChar = "\n";
                                         break;
+
+                                    default:
+                                        // An unexpected break type must not inherit the separator of a
+                                        // previous chunk.
+                                        breakChar = string.Empty;
+                                        break;
                                 }
 
                                 if (textResult == NativeMethods.IFilterReturnCode.FILTER_S_LAST_TEXT)
                                     _chunkValid = false;
 
+                                // S_OK with no text and no break character emits nothing and leaves the
+                                // chunk valid, so the very same chunk would be read again forever; drop
+                                // it so the loop moves on to the next one.
+                                if (textLength == 0 && string.IsNullOrEmpty(breakChar))
+                                    _chunkValid = false;
+
+                                break;
+
+                            default:
+                                // An unhandled result leaves the chunk valid but yields nothing, which
+                                // would repeat this same chunk forever; drop it so the loop advances.
+                                _chunkValid = false;
                                 break;
                         }
 
                         break;
+
+                    default:
+                        // CHUNKSTATE is a [Flags] enumeration, so an unexpected or combined value is a
+                        // legitimate possibility. Without this branch no case would match and the chunk
+                        // stayed valid, spinning the loop forever without ever calling the filter again.
+                        _chunkValid = false;
+                        continue;
                 }
 
                 if (textRead)
@@ -748,59 +828,87 @@ namespace IFilterTextReader
         /// <returns>Name and value of the property or null when the property is empty</returns>
         private string GetPropertyNameAndValue(IntPtr valuePtr)
         {
+            if (valuePtr == IntPtr.Zero)
+                return null;
+
             var propertyVariant = (NativeMethods.PROPVARIANT)
                 Marshal.PtrToStructure(valuePtr, typeof(NativeMethods.PROPVARIANT));
 
-            try
-            {
-                if (string.IsNullOrWhiteSpace(propertyVariant.Value.ToString()))
-                    return null;
+            if (string.IsNullOrWhiteSpace(propertyVariant.Value?.ToString()))
+                return null;
 
-                // Read the string property
-                if (_chunk.attribute.psProperty.ulKind == NativeMethods.PROPSPECKIND.PRSPEC_LPWSTR)
+            // Read the string property
+            if (_chunk.attribute.psProperty.ulKind == NativeMethods.PROPSPECKIND.PRSPEC_LPWSTR)
+            {
+                var propertyNameString = Marshal.PtrToStringUni(_chunk.attribute.psProperty.data);
+                return GetMetaDataProperty(propertyNameString, propertyVariant.Value);
+            }
+            else
+            {
+                var property = PropertyMapper.GetProperty(_chunk.attribute.guidPropSet,
+                    (long)_chunk.attribute.psProperty.data);
+
+                if (!string.IsNullOrEmpty(property))
+                    return GetMetaDataProperty(property, propertyVariant.Value);
+
+                // Reader the property guid and id
+                var propertyKey = new NativeMethods.PROPERTYKEY
                 {
-                    var propertyNameString = Marshal.PtrToStringUni(_chunk.attribute.psProperty.data);
-                    return GetMetaDataProperty(propertyNameString, propertyVariant.Value);
+                    fmtid = new Guid(_chunk.attribute.guidPropSet.ToString()),
+                    pid = (long)_chunk.attribute.psProperty.data
+                };
+
+                var result = NativeMethods.PSGetNameFromPropertyKey(ref propertyKey, out var propertyName);
+                if (result == 0)
+                {
+                    UnmappedPropertyEvent?.Invoke(this,
+                        new UnmappedPropertyEventArgs(_chunk.attribute.guidPropSet,
+                            _chunk.attribute.psProperty.data.ToString(), propertyName,
+                            propertyVariant.Value.ToString()));
+
+                    return GetMetaDataProperty(propertyName, propertyVariant.Value);
                 }
                 else
                 {
-                    var property = PropertyMapper.GetProperty(_chunk.attribute.guidPropSet,
-                        (long)_chunk.attribute.psProperty.data);
+                    UnmappedPropertyEvent?.Invoke(this,
+                        new UnmappedPropertyEventArgs(_chunk.attribute.guidPropSet,
+                            _chunk.attribute.psProperty.data.ToString(), null, propertyVariant.Value.ToString()));
 
-                    if (!string.IsNullOrEmpty(property))
-                        return GetMetaDataProperty(property, propertyVariant.Value);
-
-                    // Reader the property guid and id
-                    var propertyKey = new NativeMethods.PROPERTYKEY
-                    {
-                        fmtid = new Guid(_chunk.attribute.guidPropSet.ToString()),
-                        pid = (long)_chunk.attribute.psProperty.data
-                    };
-
-                    var result = NativeMethods.PSGetNameFromPropertyKey(ref propertyKey, out var propertyName);
-                    if (result == 0)
-                    {
-                        UnmappedPropertyEvent?.Invoke(this,
-                            new UnmappedPropertyEventArgs(_chunk.attribute.guidPropSet,
-                                _chunk.attribute.psProperty.data.ToString(), propertyName,
-                                propertyVariant.Value.ToString()));
-
-                        return GetMetaDataProperty(propertyName, propertyVariant.Value);
-                    }
-                    else
-                    {
-                        UnmappedPropertyEvent?.Invoke(this,
-                            new UnmappedPropertyEventArgs(_chunk.attribute.guidPropSet,
-                                _chunk.attribute.psProperty.data.ToString(), null, propertyVariant.Value.ToString()));
-
-                        return GetMetaDataProperty(_chunk.attribute.guidPropSet + "/" + _chunk.attribute.psProperty.data,
-                            propertyVariant.Value);
-                    }
+                    return GetMetaDataProperty(_chunk.attribute.guidPropSet + "/" + _chunk.attribute.psProperty.data,
+                        propertyVariant.Value);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Releases a <see cref="NativeMethods.PROPVARIANT"/> that an IFilter handed back from
+        /// <see cref="NativeMethods.IFilter.GetValue"/>. Per the IFilter contract the filter
+        /// allocates it with <c>CoTaskMemAlloc</c>, so the memory the variant references is freed
+        /// with <c>PropVariantClear</c> and the variant block itself with the matching
+        /// <c>CoTaskMemFree</c> — not <c>FreeHGlobal</c>, which would corrupt the heap.
+        /// </summary>
+        /// <param name="valuePtr">Pointer returned by the filter, or <see cref="IntPtr.Zero"/></param>
+        private void ReleasePropVariant(IntPtr valuePtr)
+        {
+            if (valuePtr == IntPtr.Zero)
+                return;
+
+            try
+            {
+                // exactly one clear: the variant owns its referenced memory and a second clear
+                // would double free it
+                var propertyVariant = (NativeMethods.PROPVARIANT)
+                    Marshal.PtrToStructure(valuePtr, typeof(NativeMethods.PROPVARIANT));
+
+                propertyVariant.Clear();
+            }
+            catch (Exception)
+            {
+                // releasing must never mask the result of the read that produced the variant
             }
             finally
             {
-                propertyVariant.Clear();
+                Marshal.FreeCoTaskMem(valuePtr);
             }
         }
         #endregion
@@ -1279,8 +1387,23 @@ namespace IFilterTextReader
         /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
-            if (_filter != null)
-                Marshal.ReleaseComObject(_filter);
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
+            try
+            {
+                // A released (or already released) filter makes ReleaseComObject throw, and this
+                // method runs from the finalizer, where an escaping exception terminates the whole
+                // process. Release defensively and never let it propagate.
+                if (_filter != null && Marshal.IsComObject(_filter))
+                    Marshal.ReleaseComObject(_filter);
+            }
+            catch (Exception)
+            {
+                // Ignore
+            }
 
             try
             {

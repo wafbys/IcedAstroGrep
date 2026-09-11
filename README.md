@@ -15,6 +15,25 @@ dotnet build IcedAstroGrep.slnx
 dotnet test IcedAstroGrep.slnx
 ```
 
+### Building inside a restricted (sandboxed) shell
+
+If commands run under a Windows *restricted token* — a sandbox that confines file operations,
+for example — two commands need special handling. Neither is a defect in this repository; in an
+unrestricted shell both work exactly as written above.
+
+- **Multi-node MSBuild fails without any diagnostic.** `dotnet build IcedAstroGrep.slnx` exits 1
+  reporting `0 Error(s)`, because MSBuild's worker nodes talk over named pipes and a restricted
+  token cannot open them. Build single-node instead:
+
+  ```powershell
+  dotnet build IcedAstroGrep.slnx -m:1 -nodeReuse:false
+  ```
+
+- **`dotnet test` aborts.** The vstest test host calls `Process.EnableRaisingEvents` on its parent
+  process, which needs `OpenProcess` rights a restricted token does not grant, so the run ends with
+  `Win32Exception (5): Access is denied`. Run the tests with the sandbox disabled, from an
+  unrestricted shell, or through a plain test runner that skips vstest.
+
 ## Green / portable publish
 
 ```powershell

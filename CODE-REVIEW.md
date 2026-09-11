@@ -253,8 +253,8 @@ public PDFPlugin()
 
 ## 5. 环境相关观察（非代码缺陷，但会影响协作者）
 
-1. 默认多节点 `dotnet build IcedAstroGrep.slnx` 在本机**失败且不打印任何错误**（`0 Error(s)` + exit 1）。原因是 `_GetProjectReferenceTargetFrameworkProperties` 中调用的子 MSBuild 任务失败，与 SDK 目录下缺失的 `Microsoft.NET.SDK.WorkloadAutoImportPropsLocator` 有关。加 `-m:1 -nodeReuse:false` 后一切正常。建议在 README 补充这一条，或排查本机 SDK 安装。
-2. `dotnet test` 在本沙箱下必然失败：vstest 测试宿主调用 `Process.EnableRaisingEvents` 时被拒绝（`Win32Exception (5): Access is denied`）。本次评审改用自建 harness 直接反射调用 `GrepTests` 的测试方法，4/4 通过。
+1. 默认多节点 `dotnet build IcedAstroGrep.slnx` 在**沙箱内**失败且不打印任何错误（`0 Error(s)` + exit 1）。**（复核更正）** 初版评审把原因归为 `_GetProjectReferenceTargetFrameworkProperties` 的子 MSBuild 任务失败、与 SDK 目录下缺失的 `Microsoft.NET.SDK.WorkloadAutoImportPropsLocator` 有关，这是误判：在关闭沙箱后同一条命令 `Build succeeded`（exit 0，0 error）。真实原因是沙箱的 ACL 受限令牌禁止打开命名管道，而 MSBuild 多节点正是靠命名管道通信。因此这与本机 SDK 安装无关，也不是代码问题；加 `-m:1 -nodeReuse:false` 可绕开。已在 README 记录。
+2. `dotnet test` 在沙箱下必然失败：vstest 测试宿主调用 `Process.EnableRaisingEvents` 时被拒绝（`Win32Exception (5): Access is denied`）。机理同上——受限令牌下连对自身进程调 `OpenProcess` 都被拒，而宿主需要查询其父进程。**关闭沙箱后 `dotnet test` 正常**（`Failed: 0, Passed: 26, Total: 26`）。沙箱内则改用自建 harness 反射执行测试方法。
 
 ---
 

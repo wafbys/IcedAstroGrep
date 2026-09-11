@@ -52,7 +52,7 @@ A WinUI 3 host can therefore reference Core without dragging WinForms or WPF int
 | Events | `SearchingFile`, `FileHit`, `LineHit`, `FileFiltered`, `DirectoryFiltered`, `FileEncodingDetected`, `SearchingFileByPlugin`, `SearchComplete`, `SearchCancel`, `SearchError`. |
 | `Grep.BuildSearchRegEx(spec)` | The shared regex construction, including the 2-second match timeout. |
 | `Grep.RetrieveLineMatches`, `Grep.WholeWordOnly` | Shared matching helpers so shells highlight exactly what the engine matched. |
-| `ProductInformation.ApplicationVersionText` | `1.1.0 (57903c9300c4)` — version plus the commit the build came from. Show it in the shell's caption so a running copy can be identified. |
+| `ProductInformation.ApplicationVersionText` | `1.1.0 (4e264cc)` — version plus the commit the build came from. Show it in the shell's caption so a running copy can be identified. |
 | `SearchRegexTimeoutException` | Thrown when a pattern exceeds the timeout; the search is aborted. Surface it, never swallow it. |
 
 

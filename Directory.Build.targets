@@ -10,7 +10,9 @@
   -->
   <Target Name="GenerateGitRevisionAttribute" BeforeTargets="BeforeCompile;CoreCompile">
 
-    <Exec Command="git rev-parse --short=12 HEAD"
+    <!-- Seven characters, not git's default abbreviation: seven is what GitHub and GitHub Desktop
+         display, so a hash read off the window caption matches the one seen in the web UI. -->
+    <Exec Command="git rev-parse --short=7 HEAD"
           WorkingDirectory="$(MSBuildThisFileDirectory)"
           ConsoleToMSBuild="true"
           IgnoreExitCode="true"

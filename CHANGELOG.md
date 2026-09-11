@@ -9,9 +9,9 @@
 
 ### 新增
 
-- **窗口标题显示版本号与提交哈希**：主窗口标题现在是 `搜索路径 - IcedAstroGrep 1.1.0 (57903c9300c4)`（无搜索路径时省略路径部分），启动即显示，不依赖是否开始过搜索。"关于"对话框与日志的 STARTING / STOPPING 行同样带上提交哈希，便于凭日志确认用户实际运行的构建。
+- **窗口标题显示版本号与提交哈希**：主窗口标题现在是 `搜索路径 - IcedAstroGrep 1.1.0 (4e264cc)`（无搜索路径时省略路径部分），启动即显示，不依赖是否开始过搜索。"关于"对话框与日志的 STARTING / STOPPING 行同样带上提交哈希，便于凭日志确认用户实际运行的构建。
 - **构建期注入提交哈希**：新增 `Directory.Build.targets`，对仓库内每个程序集写入 `AssemblyMetadata("GitHash", <短哈希>)`。没有 git 或不在仓库中（例如源码导出）时退化为 `unknown`，不会让构建失败；生成的中间文件只在哈希变化时重写，因此不会破坏增量构建。
-- `ProductInformation` 新增 `ApplicationCommit`（读取入口程序集的提交哈希）与 `ApplicationVersionText`（`1.1.0 (57903c9300c4)` 形式），并由 `ReadCommit(Assembly)` 承载可测试的读取逻辑。第二个壳只要在本仓库内构建就会自动获得该标记。
+- `ProductInformation` 新增 `ApplicationCommit`（读取入口程序集的提交哈希）与 `ApplicationVersionText`（`1.1.0 (4e264cc)` 形式），并由 `ReadCommit(Assembly)` 承载可测试的读取逻辑。第二个壳只要在本仓库内构建就会自动获得该标记。
 
 ### 计划中
 

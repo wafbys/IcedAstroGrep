@@ -26,7 +26,7 @@ namespace IcedAstroGrep.Tests
 			// "unknown" is the deliberate fallback for a source export without a repository
 			if (commit != ProductInformation.UnknownCommit)
 			{
-				Assert.Matches("^[0-9a-f]{7,40}$", commit);
+				Assert.Matches("^[0-9a-f]{7}$", commit);
 			}
 		}
 

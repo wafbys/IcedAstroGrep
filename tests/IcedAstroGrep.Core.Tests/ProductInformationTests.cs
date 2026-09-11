@@ -18,10 +18,11 @@ namespace IcedAstroGrep.Core.Tests
 			Assert.False(string.IsNullOrWhiteSpace(commit), "no commit metadata was stamped into the assembly");
 
 			// "unknown" is the deliberate fallback for a source export without a repository; anything
-			// else has to look like the short hash the build target writes
+			// else has to look like the seven character abbreviation the build writes, so it matches
+			// what GitHub and GitHub Desktop show for the same commit
 			if (commit != ProductInformation.UnknownCommit)
 			{
-				Assert.Matches("^[0-9a-f]{7,40}$", commit);
+				Assert.Matches("^[0-9a-f]{7}$", commit);
 			}
 		}
 

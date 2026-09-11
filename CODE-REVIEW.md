@@ -272,3 +272,17 @@ public PDFPlugin()
 | 8 | 处理便携目录不可写、`SettingsIO` 原子写入 | 实际部署中的第一类故障 |
 | 9 | 补测试与 CI（至少覆盖 `Grep` 的过滤/否定/上下文/命中数路径与 `FilterItem` 往返序列化） | 上述多数缺陷都靠测试即可拦住 |
 | 10 | 补 `pdftotext` 的第三方许可说明；清理 `Legacy` 注册表代码与残留死代码 | 合规与长期可维护性 |
+
+### 修复状态（同上表顺序）
+
+| 顺序 | 状态 | 说明 |
+|---|---|---|
+| 1 | 已修复 | `Grep.SearchRegExTimeout`（2 秒）应用于全部搜索用 `Regex`；超时转换为 `SearchRegexTimeoutException` 上报并中止搜索；正则改为每次搜索编译一次（`Grep.Execute` 中构建一次）；`frmMain` 输入校验增加探针匹配。注意 `Regex.Matches()` 是惰性求值的，超时实际在枚举集合时才抛出，故求值被显式提前到 `Grep.EvaluateAllMatches`。另：单文件内取消检查改为每 1024 行一次。 |
+| 2 | 已修复 | `EncodingCache.RemoveItem` 补上字典移除；内部加锁 + 线程安全单例；淘汰改为基于条目数自洽、LRU 更新/删除 O(1)；新增 `Grep.AbortAndWait`，`frmMain.StartSearch` 在开新搜索前中止并等待旧搜索线程退出。 |
+| 3–10 | 待处理 | 尚未动手。 |
+
+> 验证结果：`dotnet build -m:1 -nodeReuse:false` 成功（0 warning / 0 error）。
+> `dotnet test` 在本沙箱下仍必然失败——vstest 测试宿主调用 `Process.EnableRaisingEvents` 时被拒绝（`Win32Exception (5): Access is denied`），与 §5-2 的观察一致。
+> 因此行为验证改用临时 harness（`ProjectReference` 到 `IcedAstroGrep.Core`，直接调用 `GrepTests` 并追加新检查）：
+> 4 个既有测试 + 9 项新增检查（正则超时同步中止 / 异步上报、正则单次编译、缓存移除 / 淘汰 / 8 线程并发、`AbortAndWait` 空闲与运行中）**共 13 项全部通过**。
+> 临时 harness 未入库；若要长期回归，建议在可运行 `dotnet test` 的环境中把上述 9 项补进 `tests/IcedAstroGrep.Core.Tests`。

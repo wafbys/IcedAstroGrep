@@ -289,11 +289,17 @@ public PDFPlugin()
 | 4 | 已修复 | `PDFPlugin` 构造函数不再抛出：提取失败只记录日志并标记为不可用；内容一致时不再重写约 1 MB 的 `pdftotext.exe`。`pdftotext` 增加 60 秒超时 + `Kill(entireProcessTree: true)`，输出名加入全路径哈希，输出文件在 `finally` 删除，`Unload` 清理过期残留。另修正由终结器调用、会删除共享临时目录的 `Dispose()`。**取消令牌未接入**：插件契约 `IIcedAstroGrepPlugin.Grep` 没有令牌参数，接入需改接口（影响所有插件），超出本项范围；超时已把取消延迟限制在 60 秒内。 |
 | 5 | 已修复（P1-3 部分残留） | `Read()` 改用 1 长度缓冲区；`_chunk.flags` 补 `default`（`CHUNKSTATE` 是 `[Flags]`，组合值合法）、零长度文本推进、新增"零进展"守卫（连续 64 次无字符且无新块 → 抛 `IFFilterPartiallyFiltered`）；`FilterReaderOptions` 默认启用 `TimeoutWithException`（60 秒）；`CHUNK_VALUE` 去掉会泄漏的 `AllocHGlobal`、改用 `PropVariantClear` + `FreeCoTaskMem`；`Dispose` 幂等化并加 `IsComObject` 判断，终结器不再抛异常。**残留**：`FilterLoader` 的 IStream 释放 / 单次 Read / HRESULT 检查、`Job.cs` 泄漏、`VT_BLOB`/`VT_BSTR` 的 AV 路径。 |
 | 6 | 已修复（"默认关闭"一项经复核本就满足） | iFilter 任何失败现在既上报错误、又置 `IsFileSkipped` 让默认文本搜索继续处理该文件（原先只上报不回退 = 漏报）；读取超时显式设为 60 秒；`Extensions` 不再返回插件名。`FilterSearcher.FileContainsText` 改为按 `ignoreCase` 用 `StringComparison` 比较（原先只大写行文本，非大写搜索词永远匹配不到）。"默认关闭"经复核**本就满足**：`PluginManager.cs:157` 传的是 `enabled: false`。 |
-| 7–10 | 待处理 | 尚未动手。 |
+| 7 | 已修复 | Excel 与 PDF 改为逐行产出：Excel 按行消费 `ExcelDataReader` 的前向读取器（不再逐表拼大字符串 → 切分 → 拷入列表），PDF 用 `StreamReader` 逐行读取（不再 `File.ReadAllLines`）且临时输出在枚举结束时删除。实测同一份 30 万行 xlsx：托管堆峰值 **295 MB → 11 MB**，提取结果逐行一致。Word 因 OpenXML SDK 必须把整份 `word/document.xml` 物化为对象树，改为对主文档部件**解压后**大小设 32 MB 上限并显式报错（值取自 zip 中央目录，无需解压）。 |
+| 8–10 | 待处理 | 尚未动手。 |
+
+> 修复过程中**新发现**的三个缺陷（原评审未提及，均已修复）：
+> 1. **Excel 插件在本分支上完全不可用**——`ExcelDataReader` 的配置构造函数解析回退代码页 1252，而 .NET Core 默认不注册旧代码页，每个 .xls/.xlsx 都抛 `NotSupportedException`。新增 `LegacyEncodingSupport.EnsureRegistered()`（注册 `CodePagesEncodingProvider`）+ `System.Text.Encoding.CodePages` 包；这同时修好了编码检测里 `Encoding.GetEncoding(codePage)` 对旧代码页的失败。
+> 2. **Word 插件在无 styles 部件的文档上 NRE**（`StyleDefinitionsPart` 直接解引用），已改为空安全。
+> 3. **`FilterSearcher.FileContainsText`（P1-4）之外**：`dotnet test` 与多节点 `dotnet build` 在沙箱下的失败均源于 ACL 受限令牌（进程句柄 / 命名管道），关闭沙箱后分别通过 `26/26` 与 `Build succeeded`——见 §5 的复核更正。
 
 > 验证结果：`dotnet build -m:1 -nodeReuse:false` 成功（0 warning / 0 error）。
-> `dotnet test` 在本沙箱下仍必然失败——vstest 测试宿主调用 `Process.EnableRaisingEvents` 时被拒绝（`Win32Exception (5): Access is denied`），与 §5-2 的观察一致。
-> 因此测试与行为验证改用临时 harness（`ProjectReference` 到被测项目，自建 xunit 迷你 runner）：
+> **本节此前记录的"沙箱下 `dotnet test` 必然失败"已不适用**：会话权限切换为 `danger-full-access` 后，`dotnet test` 直接通过（`Failed: 0, Passed: 26`），多节点 `dotnet build` 也成功。失败根因是受限令牌，不是代码（见 §5 复核更正）。
+> 按轮次记录的验证：
 > - P0 轮次：4 个既有测试 + 9 项新增检查（正则超时同步中止 / 异步上报、正则单次编译、缓存移除 / 淘汰 / 8 线程并发、`AbortAndWait` 空闲与运行中）共 13 项通过；
 > - P1-5 轮次：`FilterItemTests` 22 个用例 + `GrepTests` 4 个用例共 26 项通过（`FilterItemTests` 已入库，可在能跑 `dotnet test` 的环境中直接执行）；
 > - P1-6/P1-7 轮次：`PDFPlugin` 6 项检查通过——含真实超时路径（60.0 秒触发、假转换器的孙进程心跳在 8.7 秒后停止，证明整棵进程树被回收）。
@@ -301,3 +307,4 @@ public PDFPlugin()
 >   **该轮次抓到并修正了一个自引入的严重缺陷**：给 GetChunk 结果 switch 添加 `default: _chunkValid = false;` 会把正常的 `S_OK` 也判为无效，使整条 iFilter 路径读不出任何内容（正是 §P1-4 所警告的静默假阴性）。因第 516 行已把 `_chunkValid` 赋为 `result == S_OK`，`default` 分支不应再改动它。
 > - P1-4 轮次：9 项检查通过——`FilterSearcher` 的大写/混合大小写/大小写敏感/null 词、`Extensions` 不再冒充扩展名列表、无 iFilter 的文件交还默认搜索、以及两项端到端：①「插件报错 + `IsFileSkipped`」确实同时产生"上报错误"与"默认搜索命中"（这正是本项修复所依赖的契约）；②启用 File Handlers 后真实系统 iFilter 命中且 `FromPlugin == true`（若沿用第 5 项那个自引入缺陷，此项会失败）。
 > 临时 harness 未入库；`PDFPlugin` 与 `FilterReader` 的检查因分别位于 App 项目、需要假 COM 滤镜，未固化为仓库测试。
+> - P1-8 轮次：以"改动前先记录提取结果、改动后逐行比对"的方式验证——Excel（多工作表、内嵌制表符、含 `|`/`<` 的单元格、每表末尾空行）与 Word（段落、空段落、表格行）的提取结果 17 行**完全一致**；内存峰值以同一份 30 万行 xlsx 前后对比（295 MB → 11 MB）；PDF 用手写 xref 的最小 PDF 首次做到端到端（命中正确，且全量扫描与提前 `break` 两条路径都无临时文件残留）；Word 上限以 40 MB 部件（590 KB 包）验证拒绝并给出明确信息。

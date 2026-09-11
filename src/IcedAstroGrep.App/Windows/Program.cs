@@ -97,7 +97,6 @@ namespace IcedAstroGrep.Windows
 
 			LogClient.Instance.Logger.Info("Operating System: {0}", Environment.OSVersion.VersionString);
 
-			Legacy.ConvertLanguageValue();
 			Language.Load(IcedAstroGrep.GeneralSettings.Language);
 
 			// The portable layout writes settings, logs and the encoding cache beside the executable.

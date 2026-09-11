@@ -44,6 +44,19 @@ Zip the `publish\win-x64` folder. Settings, logs, and encoding cache live next t
 
 There is no installer and no Explorer context-menu integration.
 
+The publish output also contains `ThirdParty\xpdf\` with the licensing material for the bundled
+`pdftotext` executable. Do not strip it from a release: the Xpdf licence requires its documentation
+to be distributed together with that binary. See `third-party/xpdf/pdftotext-4.01.01-NOTICE.txt`.
+
+## Repository tools
+
+```powershell
+pwsh tools/import-upstream.ps1 -SourcePath <path to an AstroGrep checkout>
+```
+
+Imports an upstream AstroGrep source tree into this repository and rewrites the namespaces and paths
+on the way. It is a maintenance helper, not part of the build.
+
 ## Layout
 
 | Project | Role |

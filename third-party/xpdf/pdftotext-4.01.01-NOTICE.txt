@@ -1,0 +1,63 @@
+Third-party component: Xpdf pdftotext
+=====================================
+
+Component   : pdftotext (command line PDF to text converter)
+Version     : 4.01.01
+Copyright   : Copyright 1996-2019 Glyph & Cog, LLC
+Upstream    : Xpdf, https://www.xpdfreader.com/
+License     : GNU General Public License, version 2 (the same license as this project)
+Bundled as  : src/IcedAstroGrep.App/Resources/pdftotext.exe
+SHA-256     : 1537FAC2FEFA3AC26164401D566D8FC55EA7CDA1F9BF502AE4303090F70740B1
+Size        : 1,074,176 bytes
+
+How it is used
+--------------
+IcedAstroGrep embeds the unmodified pdftotext executable as a resource and extracts it to a
+temporary folder at runtime to extract the text of PDF documents. The binary itself is not
+modified in any way; only its SHA-256 is recorded above so a shipped copy can be verified.
+
+
+Licensing
+---------
+Glyph & Cog distributes Xpdf under two licenses: the GNU General Public License, and a commercial
+license. This project uses it under the GPL, which is compatible with its own GPL-2.0-or-later
+licensing.
+
+"Glyph & Cog distributes Xpdf under two different licenses: An open source license - the GNU
+General Public License (GPL) - A commercial license"
+    -- https://www.glyphandcog.com/opensource.html
+
+For use outside the GPL, a commercial license must be obtained from Glyph & Cog:
+    https://www.glyphandcog.com/sourcelic.html
+
+
+Redistribution requirement - read before publishing a release
+-------------------------------------------------------------
+Glyph & Cog states the condition attached to redistributing the standalone executables:
+
+"If you want to use the stand-alone executables (pdftotext for example) with your application,
+you're free to do so. (To comply with the GPL, you'll need to distribute the Xpdf documentation
+along with the pdftotext executable - see the Xpdf README file for details.)"
+    -- https://www.glyphandcog.com/opensource.html
+
+The Xpdf README puts the same requirement in concrete terms:
+
+"I don't mind if you redistribute Xpdf in source and/or binary form, as long as you include all of
+the documentation: README, man pages (or help files), and COPYING."
+    -- Xpdf README, Distribution section
+
+So a release of this application must ship, together with the executable:
+
+  1. this notice,
+  2. the tool's help text  -> pdftotext-4.01.01-help.txt (captured from the bundled binary itself),
+  3. the licence text      -> the GPL-2 in this repository's LICENSE file, which is the same
+                              document Xpdf ships as COPYING.
+
+Both files in this folder are copied next to the application by the App project, so a publish
+output or release zip already contains them. See "Third-party components" in NOTICE.
+
+
+Corresponding source
+--------------------
+Xpdf source code, including the pdftotext sources for this version, is published by Glyph & Cog at
+https://www.xpdfreader.com/download.html

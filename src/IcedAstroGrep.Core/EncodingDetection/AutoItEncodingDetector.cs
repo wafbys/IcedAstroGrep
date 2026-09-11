@@ -97,34 +97,6 @@ namespace IcedAstroGrep.Core.EncodingDetection
       }
 
       /// <summary>
-      ///     Gets the BOM length for a given Encoding mode.
-      /// </summary>
-      /// <param name="encoding"></param>
-      /// <returns>The BOM length.</returns>
-      public static int GetBomLengthFromEncodingMode(Encoding encoding)
-      {
-         int length;
-
-         switch (encoding)
-         {
-            case Encoding.Utf16BeBom:
-            case Encoding.Utf16LeBom:
-               length = 2;
-               break;
-
-            case Encoding.Utf8Bom:
-               length = 3;
-               break;
-
-            default:
-               length = 0;
-               break;
-         }
-
-         return length;
-      }
-
-      /// <summary>
       ///     Checks for a BOM sequence in a byte buffer.
       /// </summary>
       /// <param name="buffer"></param>

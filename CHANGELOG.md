@@ -28,6 +28,10 @@
 - **新发现（评审更正）**：评审 §5-1 将多节点 `dotnet build` 失败归因于 SDK 缺文件有误，实为沙箱 ACL 受限令牌禁止命名管道；关闭沙箱后同一条命令 `Build succeeded`。`dotnet test` 同理（vstest 测试宿主需要 `OpenProcess` 父进程权限），关闭沙箱后 26 个测试全部通过。
 - **P2-9 设置写入非原子、读取失败即丢弃全部配置**：`SettingsIO.Save` 改为先把完整文档写入同目录的 `.tmp` 并 `Flush(true)` 落盘，再原子替换目标文件；被替换的旧文件保留为 `.bak`。`Load` 在主文件读取失败（崩溃或断电留下的截断文件）时回退到 `.bak` 并记录警告——原先一次解析失败等于全部设置回到默认值。单条属性应用失败也从 `Console.WriteLine` 改为写日志。
 - **P2-8 便携目录不可写时设置静默不保存**：新增 `ApplicationPaths.IsDirectoryWritable`；`Program.Main` 在语言加载后探测程序目录，不可写则记录错误并弹出明确提示（含目录路径与系统错误信息），而不是让之后每一次保存都默默失败。新增 `ApplicationFolderNotWritable` 语言键（en-us）。**刻意不做**回退到 `%APPDATA%`：便携工具的承诺就是数据在程序旁边，静默写到别处比明确告知更糟。
+- **P1-9 移除注册表行为**：删除 `Legacy.cs`（612 行）与 `Registry.cs`（355 行）及其 5 个调用点。原先应用启动时会读取 `HKCU\Software\VB and VBA Program Settings\IcedAstroGrep` 迁移旧设置，然后**删除整个键树**——一个"绿色便携"工具不应在未告知的情况下读写并删除注册表。本分支是全新项目，不存在需要迁移的用户，因此直接移除而不是改为询问。未配置文本编辑器时的默认值由"从注册表迁移"改为空列表。iFilter 查找读取 HKLM 的部分（`FilterLoader`）保持不变，它是只读且必要的。
+- **P2-7 清理残留死代码**：`EncodingTools` 移除 7 个无任何引用的成员（`DetectOutgoingStreamEncoding`、`DetectOutgoingStreamEncodings`、`GetMostEfficientEncodingForStream`、`IsAscii`、`OpenTextFile`、`OpenTextStream`、`ReadTextFile`；其中 `ReadTextFile` 除了无人调用外本身也是坏的——它分配缓冲区却从不读入文件内容）。`AutoItEncodingDetector.GetBomLengthFromEncodingMode` 与 `CharsetProber.SetOption` 同样无引用，一并移除。**未**对 vendored 目录做逐成员审计：`PreferedEncodingsForStream` 现在只被赋值、无人读取，但它牵动静态构造函数里一整段编码枚举逻辑，本次不动。
+- **P2-18 `tools/import-upstream.ps1` 参数化**：原先硬编码作者本机的上下游绝对路径，仓库内无法复用。改为必需的 `-SourcePath`（显式无默认值，并在目录不存在时给出明确错误）与可选的 `-DestinationPath`（默认取脚本所在的仓库）。README 新增"Repository tools"一节说明。
+- **P2-17 补齐 `pdftotext` 的第三方许可说明**：核实随附二进制为 Xpdf `pdftotext` **4.01.01**（Copyright 1996-2019 Glyph & Cog, LLC），按 GPL-2 使用（与本项目同许可）。新增 `third-party/xpdf/`：许可与合规说明（含来源、版本、SHA-256、对应源码地址），以及从该二进制本身抓取的帮助文本——因为 Glyph & Cog 明确要求再分发独立可执行文件时**必须一并分发 Xpdf 文档**（README、man/帮助文件与 COPYING）。App 项目会把这两份文件复制到输出目录，README 提示发布时不得删除。
 
 ### 测试
 

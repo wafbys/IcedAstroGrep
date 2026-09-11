@@ -35,4 +35,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup>
+    <!--
+      pdftotext.exe is redistributed inside this assembly, and its licence requires the Xpdf
+      documentation to be distributed together with it, so both files ship beside the application.
+    -->
+    <None Include="..\..\third-party\xpdf\*" LinkBase="ThirdParty\xpdf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

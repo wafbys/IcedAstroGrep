@@ -299,26 +299,6 @@ namespace IcedAstroGrep.Core.EncodingDetection
 		}
 
 		/// <summary>
-		///
-		/// </summary>
-		/// <param name="input"></param>
-		/// <returns></returns>
-		public static Encoding DetectOutgoingStreamEncoding(string input)
-		{
-			return DetectOutgoingEncoding(input, PreferedEncodingsForStream, true);
-		}
-
-		/// <summary>
-		///
-		/// </summary>
-		/// <param name="input"></param>
-		/// <returns></returns>
-		public static Encoding[] DetectOutgoingStreamEncodings(string input)
-		{
-			return DetectOutgoingEncodings(input, PreferedEncodingsForStream, true);
-		}
-
-		/// <summary>
 		/// Gets the best Encoding for usage in mime encodings
 		/// </summary>
 		/// <param name="input">text to detect</param>
@@ -362,81 +342,6 @@ namespace IcedAstroGrep.Core.EncodingDetection
 			}
 
 			return enc;
-		}
-
-		/// <summary>
-		/// Gets the best ISO Encoding for usage in a stream
-		/// </summary>
-		/// <param name="input">text to detect</param>
-		/// <returns>the suggested encoding</returns>
-		public static Encoding GetMostEfficientEncodingForStream(string input)
-		{
-			return GetMostEfficientEncoding(input, PreferedEncodingsForStream);
-		}
-
-		/// <summary>
-		/// Checks if specified string data is acii data.
-		/// </summary>
-		/// <param name="data"></param>
-		/// <returns></returns>
-		public static bool IsAscii(string data)
-		{
-			// assume empty string to be ascii
-			if ((data == null) || (data.Length == 0))
-				return true;
-			foreach (char c in data)
-			{
-				if ((int)c > 127)
-				{
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		/// <summary>
-		/// Returns a stream reader for the given
-		/// text file with the best encoding applied
-		/// </summary>
-		/// <param name="path">path to the file</param>
-		/// <returns>a StreamReader for the file</returns>
-		public static StreamReader OpenTextFile(string path)
-		{
-			if (path == null)
-				throw new ArgumentNullException("path");
-			return OpenTextStream(File.Open(path, FileMode.Open));
-		}
-
-		/// <summary>
-		/// Creates a stream reader from a stream and detects
-		/// the encoding form the first bytes in the stream
-		/// </summary>
-		/// <param name="stream">a stream to wrap</param>
-		/// <returns>the newly created StreamReader</returns>
-		public static StreamReader OpenTextStream(Stream stream)
-		{
-			// check stream parameter
-			if (stream == null)
-				throw new ArgumentNullException("stream");
-			if (!stream.CanSeek)
-				throw new ArgumentException("the stream must support seek operations", "stream");
-
-			// assume default encoding at first place
-			Encoding detectedEncoding = Encoding.Default;
-
-			// seek to stream start
-			stream.Seek(0, SeekOrigin.Begin);
-
-			// buffer for preamble and up to 512b sample text for dection
-			byte[] buf = new byte[System.Math.Min(stream.Length, 512)];
-
-			stream.Read(buf, 0, buf.Length);
-			detectedEncoding = DetectInputCodepage(buf);
-			// seek back to stream start
-			stream.Seek(0, SeekOrigin.Begin);
-
-			return new StreamReader(stream, detectedEncoding);
 		}
 
 		/// <summary>
@@ -507,25 +412,6 @@ namespace IcedAstroGrep.Core.EncodingDetection
 			}
 
 			return buffer;
-		}
-
-		/// <summary>
-		/// Opens a text file and returns the content
-		/// encoded in the most probable encoding
-		/// </summary>
-		/// <param name="path">path to the souce file</param>
-		/// <returns>the text content of the file</returns>
-		public static string ReadTextFile(string path)
-		{
-			if (path == null)
-				throw new ArgumentNullException("path");
-
-			using (Stream fs = File.Open(path, FileMode.Open))
-			{
-				byte[] rawData = new byte[fs.Length];
-				Encoding enc = DetectInputCodepage(rawData);
-				return enc.GetString(rawData);
-			}
 		}
 
 		/// <summary>

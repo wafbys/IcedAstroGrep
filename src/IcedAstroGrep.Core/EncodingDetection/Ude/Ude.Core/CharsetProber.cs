@@ -89,11 +89,6 @@ namespace Ude.Core
             return state;
         }
 
-        public virtual void SetOption()
-        { 
-        
-        }
-
         public virtual void DumpStatus()
         { 
         

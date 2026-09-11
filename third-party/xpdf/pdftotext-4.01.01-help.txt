@@ -1,0 +1,33 @@
+pdftotext 4.01.01 - command line help text
+Captured from the exact binary bundled at src/IcedAstroGrep.App/Resources/pdftotext.exe
+(SHA-256 1537FAC2FEFA3AC26164401D566D8FC55EA7CDA1F9BF502AE4303090F70740B1)
+
+This file is the "help file" documentation that must accompany a redistributed pdftotext
+executable; see pdftotext-4.01.01-NOTICE.txt in this folder.
+pdftotext version 4.01.01
+Copyright 1996-2019 Glyph & Cog, LLC
+Usage: pdftotext [options] <PDF-file> [<text-file>]
+  -f <int>             : first page to convert
+  -l <int>             : last page to convert
+  -layout              : maintain original physical layout
+  -simple              : simple one-column page layout
+  -table               : similar to -layout, but optimized for tables
+  -lineprinter         : use strict fixed-pitch/height layout
+  -raw                 : keep strings in content stream order
+  -fixed <number>      : assume fixed-pitch (or tabular) text
+  -linespacing <number>: fixed line spacing for LinePrinter mode
+  -clip                : separate clipped text
+  -nodiag              : discard diagonal text
+  -enc <string>        : output text encoding name
+  -eol <string>        : output end-of-line convention (unix, dos, or mac)
+  -nopgbrk             : don't insert page breaks between pages
+  -bom                 : insert a Unicode BOM at the start of the text file
+  -opw <string>        : owner password (for encrypted files)
+  -upw <string>        : user password (for encrypted files)
+  -q                   : don't print any messages or errors
+  -cfg <string>        : configuration file to use in place of .xpdfrc
+  -v                   : print copyright and version info
+  -h                   : print usage information
+  -help                : print usage information
+  --help               : print usage information
+  -?                   : print usage information

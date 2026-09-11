@@ -1,6 +1,26 @@
+# Imports an AstroGrep source tree into this repository, renaming namespaces and paths on the way.
+#
+#   pwsh tools/import-upstream.ps1 -SourcePath C:\src\astrogrep-code-r76-trunk-AstroGrep
+#
+# SourcePath has no default on purpose: the path to an upstream checkout is machine specific, and a
+# hardcoded one made this script unusable anywhere but the machine it was written on. DestinationPath
+# defaults to the repository this script lives in.
+[CmdletBinding()]
+param(
+	[Parameter(Mandatory = $true)]
+	[string]$SourcePath,
+
+	[string]$DestinationPath = (Split-Path -Parent $PSScriptRoot)
+)
+
 $ErrorActionPreference = 'Stop'
-$srcRoot = 'C:\Users\YF\YF21CN\Src\astrogrep-code-r76-trunk-AstroGrep'
-$dstRoot = 'C:\Users\YF\YF21CN\Src\IcedAstroGrep'
+
+if (-not (Test-Path -Path $SourcePath -PathType Container)) {
+	throw "The upstream source folder '$SourcePath' does not exist."
+}
+
+$srcRoot = (Resolve-Path -Path $SourcePath).Path
+$dstRoot = (Resolve-Path -Path $DestinationPath).Path
 
 function Copy-Tree($from, $to, $excludeNames) {
 	New-Item -ItemType Directory -Force -Path $to | Out-Null

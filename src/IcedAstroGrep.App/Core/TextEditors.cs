@@ -194,7 +194,9 @@ namespace IcedAstroGrep
          }
          else
          {
-            __TextEditors = Windows.Legacy.ConvertTextEditors();
+            // No editors configured yet. This used to be seeded from the registry of a previous
+            // AstroGrep installation; this portable branch has no such users to migrate from.
+            __TextEditors = new TextEditor[0];
             Save(__TextEditors);
          }
       }

@@ -1243,12 +1243,9 @@ namespace IcedAstroGrep.Windows.Forms
 			Language.ProcessForm(this, toolTip1);
 
 			// Load the general settings
-			Legacy.ConvertGeneralSettings();
-
 			LoadSettings();
 
 			// Load the search settings
-			Legacy.ConvertSearchSettings();
 			_ = SearchSettings.ContextLinesBefore;
 			LoadSearchSettings();
 
@@ -1257,9 +1254,6 @@ namespace IcedAstroGrep.Windows.Forms
 			{
 				cboFilePath.Text = CommandLineArgs.StartPath;
 			}
-
-			// Delete registry entry (if exist)
-			Legacy.DeleteRegistry();
 
 			// Load plug-ins
 			PluginManager.Load();

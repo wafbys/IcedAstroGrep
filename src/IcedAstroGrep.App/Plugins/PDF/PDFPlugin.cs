@@ -43,6 +43,20 @@ namespace IcedAstroGrep.Plugins.PDF
 		private string pdfToTxtAppPath = string.Empty;
 
 		/// <summary>
+		/// Maximum time to wait for pdftotext to convert a single document before its process tree
+		/// is killed. Search cancellation only takes effect between files, so an unresponsive
+		/// converter would otherwise hold the whole search open.
+		/// </summary>
+		private const int PDF_TO_TEXT_TIMEOUT_MILLISECONDS = 60 * 1000;
+
+		/// <summary>
+		/// Age after which a .txt left in the plugin temp folder is treated as abandoned by a
+		/// crashed or killed run and removed on unload. Live conversions are bounded by
+		/// <see cref="PDF_TO_TEXT_TIMEOUT_MILLISECONDS"/>, so nothing legitimate gets this old.
+		/// </summary>
+		private static readonly TimeSpan STALE_OUTPUT_AGE = TimeSpan.FromMinutes(5);
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="PDFPlugin"/> class.
 		/// </summary>
 		/// <history>
@@ -130,14 +144,14 @@ namespace IcedAstroGrep.Plugins.PDF
 		public void Dispose()
 		{
 			IsAvailable = false;
+			pdfToTxtAppPath = string.Empty;
 
-			// cleanup temp files and directory
-			string path = GetPDFFolder();
-			try
-			{
-				Directory.Delete(path, true);
-			}
-			catch { }
+			// deliberately does NOT delete the temp folder: the finalizer calls this, and the folder
+			// holds shared state (the extracted utility, plus any output another instance is still
+			// reading), so removing it here could break an in-flight search or delete the utility
+			// out from under a live instance. Abandoned outputs are swept by Unload(), and keeping
+			// the utility is what makes the up-to-date check pay off across runs.
+			GC.SuppressFinalize(this);
 		}
 
 		/// <summary>
@@ -310,18 +324,95 @@ namespace IcedAstroGrep.Plugins.PDF
 		/// </history>
 		public void Unload()
 		{
+			// sweep outputs abandoned by a crashed or killed run
+			try
+			{
+				foreach (string leftover in Directory.GetFiles(GetPDFFolder(), "*.txt"))
+				{
+					try
+					{
+						if (DateTime.UtcNow - File.GetLastWriteTimeUtc(leftover) > STALE_OUTPUT_AGE)
+						{
+							File.Delete(leftover);
+						}
+					}
+					catch (Exception ex)
+					{
+						IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Warn("Unable to delete abandoned pdftotext output {0}: {1}", leftover, IcedAstroGrep.Core.Logging.LogClient.GetAllExceptions(ex));
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Warn("Unable to clean up the PDF plugin temp folder: {0}", IcedAstroGrep.Core.Logging.LogClient.GetAllExceptions(ex));
+			}
 		}
 
 		/// <summary>
 		/// Extracts the pdf to text application to the pdf temp folder.
+		/// The write is skipped when the extracted file already matches the embedded copy, and any
+		/// failure is logged rather than thrown: this runs from the main form's constructor, so a
+		/// locked or unwritable temp folder must not prevent the application from starting.
 		/// </summary>
 		/// <history>
 		/// [Curtis_Beard]      09/09/2019	ADD: PDF plugin
 		/// </history>
 		private void ExtractPDFToTxtApp()
 		{
-			pdfToTxtAppPath = Path.Combine(GetPDFFolder(), "pdftotext.exe");
-			File.WriteAllBytes(pdfToTxtAppPath, IcedAstroGrep.Properties.Resources.pdftotext);
+			pdfToTxtAppPath = string.Empty;
+
+			try
+			{
+				byte[] contents = IcedAstroGrep.Properties.Resources.pdftotext;
+				string targetPath = Path.Combine(GetPDFFolder(), "pdftotext.exe");
+
+				if (!IsExtractedAppUpToDate(targetPath, contents))
+				{
+					File.WriteAllBytes(targetPath, contents);
+				}
+
+				pdfToTxtAppPath = targetPath;
+			}
+			catch (Exception ex)
+			{
+				IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Error("Unable to extract the pdftotext utility, the PDF plugin is unavailable: {0}", IcedAstroGrep.Core.Logging.LogClient.GetAllExceptions(ex));
+			}
+		}
+
+		/// <summary>
+		/// Determines whether the already extracted utility matches the embedded copy, so an
+		/// unchanged 1 MB binary is not rewritten on every start.
+		/// </summary>
+		/// <param name="path">Path of the extracted utility</param>
+		/// <param name="contents">Embedded utility contents</param>
+		/// <returns>true when the extracted file can be used as is</returns>
+		private static bool IsExtractedAppUpToDate(string path, byte[] contents)
+		{
+			try
+			{
+				var extracted = new FileInfo(path);
+
+				if (!extracted.Exists || extracted.Length != contents.Length)
+				{
+					return false;
+				}
+
+				byte[] existing = File.ReadAllBytes(path);
+				for (int i = 0; i < contents.Length; i++)
+				{
+					if (existing[i] != contents[i])
+					{
+						return false;
+					}
+				}
+
+				return true;
+			}
+			catch
+			{
+				// unreadable or locked, fall through to rewriting it
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -335,53 +426,129 @@ namespace IcedAstroGrep.Plugins.PDF
 		private string[] ExtractText(FileInfo file)
 		{
 			string tempFolder = GetPDFFolder();
-			string tempFileName = Path.Combine(tempFolder, Path.GetFileNameWithoutExtension(file.Name) + ".txt");
 
-			using (Process process = new Process())
+			// include a hash of the full path so two same named PDFs from different directories can
+			// never share an output file, and a leftover output can never be read as this file's
+			string tempFileName = Path.Combine(tempFolder, string.Format("{0}-{1}.txt", Path.GetFileNameWithoutExtension(file.Name), GetPathHash(file.FullName)));
+
+			try
 			{
-				// use command prompt
-				process.StartInfo.FileName = pdfToTxtAppPath;
-				process.StartInfo.Arguments = string.Format("-layout \"{0}\" \"{1}\"", file.FullName, tempFileName);
-				process.StartInfo.UseShellExecute = false;
-				process.StartInfo.WorkingDirectory = tempFolder;
-				process.StartInfo.CreateNoWindow = true;
-				// start cmd prompt, execute command
-				process.Start();
-				process.WaitForExit();
-
-				if (process.ExitCode == 0)
+				using (Process process = new Process())
 				{
-					if (File.Exists(tempFileName))
+					// use command prompt
+					process.StartInfo.FileName = pdfToTxtAppPath;
+					process.StartInfo.Arguments = string.Format("-layout \"{0}\" \"{1}\"", file.FullName, tempFileName);
+					process.StartInfo.UseShellExecute = false;
+					process.StartInfo.WorkingDirectory = tempFolder;
+					process.StartInfo.CreateNoWindow = true;
+					// start cmd prompt, execute command
+					process.Start();
+
+					if (!process.WaitForExit(PDF_TO_TEXT_TIMEOUT_MILLISECONDS))
 					{
-						return File.ReadAllLines(tempFileName);
+						// cancel only takes effect between files, so an unresponsive converter has to
+						// be reaped here instead of holding the search open
+						TryKillProcessTree(process);
+
+						throw new Exception(string.Format("pdftotext did not finish within {0} seconds converting '{1}'", PDF_TO_TEXT_TIMEOUT_MILLISECONDS / 1000, file.FullName));
+					}
+
+					if (process.ExitCode == 0)
+					{
+						if (File.Exists(tempFileName))
+						{
+							return File.ReadAllLines(tempFileName);
+						}
+						else
+							throw new Exception(string.Format("pdftotext did not generate an output file when converting '{0}'", file.FullName));
 					}
 					else
-						throw new Exception(string.Format("pdftotext did not generate an output file when converting '{0}'", file.FullName));
-				}
-				else
-				{
-					string errorMessage = string.Empty;
-					switch (process.ExitCode)
 					{
-						case 1:
-							errorMessage = "Error opening PDF file";
-							break;
+						string errorMessage = string.Empty;
+						switch (process.ExitCode)
+						{
+							case 1:
+								errorMessage = "Error opening PDF file";
+								break;
 
-						case 2:
-							errorMessage = "Error opening an output file";
-							break;
+							case 2:
+								errorMessage = "Error opening an output file";
+								break;
 
-						case 3:
-							errorMessage = "Error related to PDF permissions";
-							break;
+							case 3:
+								errorMessage = "Error related to PDF permissions";
+								break;
 
-						default:
-							errorMessage = "Unknown error";
-							break;
+							default:
+								errorMessage = "Unknown error";
+								break;
+						}
+
+						throw new Exception(string.Format("pdftotext returned '{0}' converting '{1}'", errorMessage, file.FullName));
 					}
-
-					throw new Exception(string.Format("pdftotext returned '{0}' converting '{1}'", errorMessage, file.FullName));
 				}
+			}
+			finally
+			{
+				// the output has been consumed above, so it must never accumulate in %TEMP%
+				TryDeleteFile(tempFileName);
+			}
+		}
+
+		/// <summary>
+		/// Builds a short file system safe hash of the given path.
+		/// </summary>
+		/// <param name="path">Path to hash</param>
+		/// <returns>16 hexadecimal characters</returns>
+		private static string GetPathHash(string path)
+		{
+			using (var algorithm = System.Security.Cryptography.SHA256.Create())
+			{
+				byte[] hash = algorithm.ComputeHash(Encoding.Unicode.GetBytes(path.ToUpperInvariant()));
+
+				var builder = new StringBuilder(16);
+				for (int i = 0; i < 8; i++)
+				{
+					builder.Append(hash[i].ToString("x2"));
+				}
+
+				return builder.ToString();
+			}
+		}
+
+		/// <summary>
+		/// Kills the given process and every process it started, ignoring any failure.
+		/// </summary>
+		/// <param name="process">Process to terminate</param>
+		private static void TryKillProcessTree(Process process)
+		{
+			try
+			{
+				process.Kill(entireProcessTree: true);
+				process.WaitForExit(5000);
+			}
+			catch (Exception ex)
+			{
+				IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Warn("Unable to terminate pdftotext: {0}", IcedAstroGrep.Core.Logging.LogClient.GetAllExceptions(ex));
+			}
+		}
+
+		/// <summary>
+		/// Deletes the given file, ignoring any failure.
+		/// </summary>
+		/// <param name="path">File to delete</param>
+		private static void TryDeleteFile(string path)
+		{
+			try
+			{
+				if (File.Exists(path))
+				{
+					File.Delete(path);
+				}
+			}
+			catch (Exception ex)
+			{
+				IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Warn("Unable to delete temporary pdftotext output {0}: {1}", path, IcedAstroGrep.Core.Logging.LogClient.GetAllExceptions(ex));
 			}
 		}
 

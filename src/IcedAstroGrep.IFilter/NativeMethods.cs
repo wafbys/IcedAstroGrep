@@ -461,6 +461,13 @@ namespace IFilterTextReader
         [StructLayout(LayoutKind.Sequential)]
         internal struct PROPVARIANT
         {
+            /// <summary>
+            /// Largest <c>VT_BLOB</c> value that will be copied out of a filter. A larger reported
+            /// length is treated as unusable instead of being allocated: the length is filter
+            /// supplied, so honouring it would let a malformed document request any allocation.
+            /// </summary>
+            private const int MaxBlobValueBytes = 1024 * 1024;
+
             #region Struct fields
             // The layout of these elements needs to be maintained.
             //
@@ -674,10 +681,18 @@ namespace IFilterTextReader
                             return DateTime.FromFileTime(hVal);
 
                         case VarEnum.VT_BSTR:
-                            return Marshal.PtrToStringBSTR(p);
+                            return p == IntPtr.Zero ? string.Empty : Marshal.PtrToStringBSTR(p);
 
                         case VarEnum.VT_BLOB:
-                            var blobData = new byte[lVal];
+                            // Both the length and the pointer come from the filter, so a malformed
+                            // document can ask for an arbitrarily large allocation or hand back a
+                            // pointer that cannot be read at all — and an access violation cannot be
+                            // caught on .NET Core, it kills the process. Refuse an implausible length
+                            // and never copy from a null pointer. A filter that is hostile beyond that
+                            // needs the out-of-process sandbox that Job.cs exists for.
+                            if (lVal <= 0 || lVal > MaxBlobValueBytes)
+                                return new byte[0];
+
                             IntPtr pBlobData;
                             switch (IntPtr.Size)
                             {
@@ -690,17 +705,22 @@ namespace IFilterTextReader
                                 default:
                                     throw new NotSupportedException();
                             }
+
+                            if (pBlobData == IntPtr.Zero)
+                                return new byte[0];
+
+                            var blobData = new byte[lVal];
                             Marshal.Copy(pBlobData, blobData, 0, lVal);
                             return blobData;
 
                         case VarEnum.VT_LPSTR:
-                            return Marshal.PtrToStringAnsi(p);
+                            return p == IntPtr.Zero ? string.Empty : Marshal.PtrToStringAnsi(p);
 
                         case VarEnum.VT_LPWSTR:
-                            return Marshal.PtrToStringUni(p);
+                            return p == IntPtr.Zero ? string.Empty : Marshal.PtrToStringUni(p);
 
                         case VarEnum.VT_UNKNOWN:
-                            return Marshal.GetObjectForIUnknown(p);
+                            return p == IntPtr.Zero ? null : Marshal.GetObjectForIUnknown(p);
 
                         case VarEnum.VT_DISPATCH:
                             return p;

@@ -2,7 +2,12 @@
   <PropertyGroup>
     <RootNamespace>IcedAstroGrep.Core</RootNamespace>
     <AssemblyName>IcedAstroGrep.Core</AssemblyName>
-    <UseWindowsForms>true</UseWindowsForms>
+    <!--
+      Deliberately NO UseWindowsForms / UseWPF: the engine has to stay usable from any shell and
+      must not drag a UI framework into a host that wants a different one. The only drawing type it
+      touches is System.Drawing.Color, which ships in the base framework (System.Drawing.Primitives)
+      and needs no framework reference.
+    -->
     <Description>Search engine for IcedAstroGrep (derived from AstroGrep / libAstroGrep).</Description>
   </PropertyGroup>
   <ItemGroup>

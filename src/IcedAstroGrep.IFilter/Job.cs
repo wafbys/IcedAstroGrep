@@ -48,15 +48,43 @@ namespace IFilterTextReader
         {
             _jobHandle = NativeMethods.CreateJobObject(IntPtr.Zero, null);
 
+            if (_jobHandle == IntPtr.Zero)
+                throw new Exception($"Unable to create a job object.  Error: {Marshal.GetLastWin32Error()}");
+
             var info = new NativeMethods.JOBOBJECT_BASIC_LIMIT_INFORMATION {LimitFlags = 0x2000};
             var extendedInfo = new NativeMethods.JOBOBJECT_EXTENDED_LIMIT_INFORMATION {BasicLimitInformation = info};
 
             var length = Marshal.SizeOf(typeof(NativeMethods.JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
             var extendedInfoPtr = Marshal.AllocHGlobal(length);
-            Marshal.StructureToPtr(extendedInfo, extendedInfoPtr, false);
 
-            if (!NativeMethods.SetInformationJobObject(_jobHandle, NativeMethods.JobObjectInfoType.ExtendedLimitInformation, extendedInfoPtr, (uint)length))
-                throw new Exception($"Unable to set information.  Error: {Marshal.GetLastWin32Error()}");
+            try
+            {
+                Marshal.StructureToPtr(extendedInfo, extendedInfoPtr, false);
+
+                if (!NativeMethods.SetInformationJobObject(_jobHandle, NativeMethods.JobObjectInfoType.ExtendedLimitInformation, extendedInfoPtr, (uint)length))
+                    throw new Exception($"Unable to set information.  Error: {Marshal.GetLastWin32Error()}");
+            }
+            catch
+            {
+                // the constructor threw, so Dispose will never be called: release what was already
+                // taken instead of leaking the job handle
+                Dispose();
+                throw;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(extendedInfoPtr);
+            }
+        }
+        #endregion
+
+        #region Destructor
+        /// <summary>
+        /// Releases the job handle when <see cref="Dispose()"/> was never called.
+        /// </summary>
+        ~Job()
+        {
+            Dispose(false);
         }
         #endregion
 
@@ -104,7 +132,10 @@ namespace IFilterTextReader
         /// <returns></returns>
         public bool AddProcess(int processId)
         {
-            return AddProcess(Process.GetProcessById(processId).Handle);
+            using (var process = Process.GetProcessById(processId))
+            {
+                return AddProcess(process.Handle);
+            }
         }
         #endregion
     }

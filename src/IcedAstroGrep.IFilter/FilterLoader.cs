@@ -163,10 +163,23 @@ namespace IFilterTextReader
                 {
                     // Copy the content to global memory
                     var buffer = new byte[stream.Length];
-                    stream.Read(buffer, 0, buffer.Length);
+
+                    // Stream.Read is allowed to return fewer bytes than it was asked for, which would
+                    // have handed the filter a partly filled buffer; ReadExactly fills it or throws.
+                    stream.ReadExactly(buffer);
+
                     var nativePtr = Marshal.AllocHGlobal(buffer.Length);
                     Marshal.Copy(buffer, 0, nativePtr, buffer.Length);
-                    NativeMethods.CreateStreamOnHGlobal(nativePtr, true, out comStream);
+
+                    var streamResult = NativeMethods.CreateStreamOnHGlobal(nativePtr, true, out comStream);
+                    if (streamResult != 0)
+                    {
+                        // the call failed, so nothing owns nativePtr and the stream is unusable
+                        Marshal.FreeHGlobal(nativePtr);
+                        comStream = null;
+
+                        throw new IFUnknownFormat($"Unable to create a stream for the file content (0x{streamResult:X8})");
+                    }
                 }
                 else
                     comStream = new IStreamWrapper(stream);
@@ -182,6 +195,13 @@ namespace IFilterTextReader
                 {
                     if (string.IsNullOrWhiteSpace(fileName))
                         throw new IFOldFilterFormat("An error occured while trying to load a stream with the IPersistStream interface", exception);
+                }
+                finally
+                {
+                    // The filter has consumed the stream by the time Load and Init have run, and for
+                    // the in-memory variant the stream owns a global memory block that is only freed
+                    // when it is released — not releasing it leaked the whole document per call.
+                    ReleaseStream(comStream);
                 }
             }
             
@@ -211,6 +231,29 @@ namespace IFilterTextReader
             }
 
             return null;
+        }
+        #endregion
+
+        #region ReleaseStream
+        /// <summary>
+        /// Releases a stream handed to a filter, ignoring anything that is not a COM object.
+        /// </summary>
+        /// <param name="stream">Stream to release, may be null</param>
+        /// <remarks>
+        /// The non in-memory path supplies our own managed <see cref="IStreamWrapper"/>, which is not
+        /// a COM object and must not be passed to <see cref="Marshal.ReleaseComObject"/>.
+        /// </remarks>
+        private static void ReleaseStream(IStream stream)
+        {
+            try
+            {
+                if (stream != null && Marshal.IsComObject(stream))
+                    Marshal.ReleaseComObject(stream);
+            }
+            catch (Exception)
+            {
+                // releasing must never mask the result of the load that just ran
+            }
         }
         #endregion
 

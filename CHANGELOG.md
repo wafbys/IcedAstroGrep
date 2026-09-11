@@ -7,6 +7,16 @@
 
 ## [未发布]
 
+### 计划中
+
+- 新增 WinUI 3 宿主壳，与现有 WinForms 壳共用同一个引擎。引擎与壳的边界、当前耦合点以及动手前应先做的决定见 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md)。
+- 其中优先级最高的一项：把当前混在 WinForms 程序集里的壳无关代码（设置持久化、插件实现、结果导出、语言资源，约 9,200 行）抽成独立程序集，否则第二个壳只能重写或复制。
+- 另需先决定数据目录策略：`ApplicationPaths.DataFolder` 取可执行文件所在目录，MSIX 打包的 WinUI 应用无法写入该位置。
+
+## [1.1.0] - 2026-09-11
+
+代码评审报告 §6 的 10 项修复全部完成或已标注残留范围；**WinForms 壳在此版本冻结**，后续特性开发转向新的 WinUI 3 壳。引擎已确认不引用任何 UI 框架（`IcedAstroGrep.Core` 的 `deps.json` 只含自身与 NLog）。
+
 ### 修复
 
 - **P0-1 正则表达式可导致搜索线程永久挂死**：所有搜索用 `Regex` 现在都带匹配超时（`Grep.SearchRegExTimeout`，2 秒）；超时被转换为 `SearchRegexTimeoutException` 并以可见的搜索错误上报并中止本次搜索，不再让线程无限期卡死。`FilterSearcher`、`HTMLHelper` 中的正则同样加了超时。搜索用的正则表达式改为每次搜索编译一次（原先是每个文件重新构造，配合 `RegexOptions.Compiled` 等于每个文件做一次动态 IL 编译）。搜索输入校验新增探针匹配，能在开始搜索前就拒绝会触发灾难性回溯的模式。单文件内的取消检查由"每行"放宽为"每 1024 行"一次，配合超时使"取消"按钮真正生效。
@@ -32,6 +42,12 @@
 - **P2-7 清理残留死代码**：`EncodingTools` 移除 7 个无任何引用的成员（`DetectOutgoingStreamEncoding`、`DetectOutgoingStreamEncodings`、`GetMostEfficientEncodingForStream`、`IsAscii`、`OpenTextFile`、`OpenTextStream`、`ReadTextFile`；其中 `ReadTextFile` 除了无人调用外本身也是坏的——它分配缓冲区却从不读入文件内容）。`AutoItEncodingDetector.GetBomLengthFromEncodingMode` 与 `CharsetProber.SetOption` 同样无引用，一并移除。**未**对 vendored 目录做逐成员审计：`PreferedEncodingsForStream` 现在只被赋值、无人读取，但它牵动静态构造函数里一整段编码枚举逻辑，本次不动。
 - **P2-18 `tools/import-upstream.ps1` 参数化**：原先硬编码作者本机的上下游绝对路径，仓库内无法复用。改为必需的 `-SourcePath`（显式无默认值，并在目录不存在时给出明确错误）与可选的 `-DestinationPath`（默认取脚本所在的仓库）。README 新增"Repository tools"一节说明。
 - **P2-17 补齐 `pdftotext` 的第三方许可说明**：核实随附二进制为 Xpdf `pdftotext` **4.01.01**（Copyright 1996-2019 Glyph & Cog, LLC），按 GPL-2 使用（与本项目同许可）。新增 `third-party/xpdf/`：许可与合规说明（含来源、版本、SHA-256、对应源码地址），以及从该二进制本身抓取的帮助文本——因为 Glyph & Cog 明确要求再分发独立可执行文件时**必须一并分发 Xpdf 文档**（README、man/帮助文件与 COPYING）。App 项目会把这两份文件复制到输出目录，README 提示发布时不得删除。
+- **P1-3 剩余项（`FilterLoader` / `Job` / `NativeMethods`）**：`FilterLoader` 用单次 `Stream.Read` 填充缓冲区，而该 API 允许只读取部分字节，滤镜可能拿到半填充内容——改用 `ReadExactly`；`CreateStreamOnHGlobal` 的 HRESULT 此前未检查，失败时还会泄漏传入的全局内存块——现在检查并释放；交给滤镜的 COM 流此前从不释放（`fDeleteOnRelease: true` 时等于每次调用泄漏整份文档的内存），改为在 `Load`/`Init` 之后释放，且只释放真正的 COM 对象（非 `readIntoMemory` 路径传的是我们自己的托管 `IStreamWrapper`）。`Job` 构造函数此前泄漏 `AllocHGlobal` 的扩展信息块，且 `SetInformationJobObject` 失败时抛出会连 job 句柄一起泄漏、该类也没有终结器——现在用 `try/finally` 释放内存、失败路径走 `Dispose` 关闭句柄并补上终结器；`AddProcess(int)` 不再泄漏 `Process` 句柄。`NativeMethods` 中 `VT_BLOB` 的长度与指针都来自滤镜，`VT_BSTR`/`VT_LPSTR`/`VT_LPWSTR`/`VT_UNKNOWN` 直接解引用滤镜给的指针：现在拒绝不合理长度（上限 1 MB）、不复制空指针，并注明超出这些防线仍属"需要 `Job` 那种进程外沙箱"的范畴。
+
+### 变更
+
+- **`IcedAstroGrep.Core` 不再引用 UI 框架**：移除 `UseWindowsForms`。Core 唯一触碰的绘图类型是 `System.Drawing.Color`（属基础框架 `System.Drawing.Primitives`），因此 `IcedAstroGrep.Core.deps.json` 现在只含自身与 NLog，没有任何 `Microsoft.WindowsDesktop.App` 框架引用——这是"一 Core 多壳"（WinForms 冻结后新增 WinUI 3 壳）的前提。
+- 新增 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md)：引擎与壳的接口、十个事件与线程/取消规则、当前混在 WinForms 程序集里的壳无关代码（约 9,200 行）、动手前应先决定的事项，以及新壳的交接清单。
 
 ### 测试
 
@@ -42,16 +58,20 @@
 - 新增 `EncodingCacheTests`：`RemoveItem` 同时移除字典项、移除后可重新加入、淘汰与字典内容保持一致、4 线程并发不抛异常。
 - 新增 `PluginContractTests`：插件失败但置 `IsFileSkipped` 时**既上报错误又回退到默认搜索**；插件声称已处理文件时会压制默认搜索（说明插件为何必须正确置位）。
 - 测试关闭 xUnit 并行执行：`Grep` 与 `EncodingCache` 持有进程级状态，正则超时用例还测时钟。测试总数 26 → **46**。
-- 新增 App 侧测试项目 `tests/IcedAstroGrep.App.Tests`（此前测试只能覆盖 Core），并加入 `SettingsIoTests`：往返、不残留 `.tmp`、保留 `.bak`、主文件损坏时从备份恢复、文件缺失或版本不符返回 false、自动创建目录。另有 `ApplicationPathsTests`（Core 侧）覆盖可写探测的可写目录、路径是文件、空路径三种情形。测试总数 46 → **56**。
+- 新增 App 侧测试项目 `tests/IcedAstroGrep.App.Tests`（此前测试只能覆盖 Core），并加入 `SettingsIoTests`：往返、不残留 `.tmp`、保留 `.bak`、主文件损坏时从备份恢复、文件缺失或版本不符返回 false、自动创建目录。另有 `ApplicationPathsTests`（Core 侧）覆盖可写探测的可写目录、路径是文件、空路径三种情形。
+- 新增 `IFilterIntegrationTests`（App 侧）：对机器上**真实注册的 COM iFilter** 做端到端读取，覆盖 `FilterLoader` 的 IPersistStream 装载、流生命周期与单字符 `Read()`；机器上没有对应 iFilter 时自报跳过而不是判失败。测试总数 56 → **57**。
 - 新增 `.github/workflows/ci.yml`：在 `windows-latest` 上 restore / build / test（Release）。此树目标为 `net10.0-windows` 并用到 WinForms 与 WPF，因此只能跑 Windows runner；沙箱环境所需的 `-m:1 -nodeReuse:false` 在 CI 中并不需要。
 
 ### 已知问题
 
-- 评审记录中尚未处理的 P1/P2 项：`FilterLoader` 的 IStream 释放与 HRESULT 检查、`Job.cs` 的资源泄漏、`VT_BLOB`/`VT_BSTR` 的畸形文档 AV 路径、`SettingsIO` 非原子写入、便携目录不可写等。
+- 评审报告 §2/§3 中仍有未处理的 P2 项：`Grep` 的 `_context` 数组随 `ContextLines` 无上限放大、无最大结果数限制、递归遍历缺少符号链接/联接点环检测、`FilterItem.IsBinaryFile` 只扫描 1 KB（注释称 10 KB）且 `CheckLongAgainstOption` 对非法值抛 `FormatException`、`PluginManager` 对损坏配置做裸 `Parse` 会阻止启动、`MediaTagsPlugin` 不释放 `TagLib.File`、`MicrosoftWordPlugin` 异常路径遗留隐藏的 WINWORD 进程、`TextEditors.LaunchEditor` 把路径拼进命令行字符串。
+- `EncodingTools.PreferedEncodingsForStream` 现在只被赋值、无人读取；它牵动静态构造函数里一整段编码枚举逻辑，本次未动。
+- 会话中途才出现的设置写入失败仍只进日志（用户可在日志窗口看到），没有即时的界面告警。
+- vendored 目录（`EncodingDetection/Ude`、`IFilterTextReader`）保持上游原样：只裁剪了确认无引用的叶子成员，没有重排或重格式化，以便将来对比/重新导入上游。
 
 ### 计划中
 
-- 继续补充测试覆盖：编码检测本身、命令行导出、以及 App 层插件（Excel / Word / PDF）的提取行为（这些需要 App 侧的测试项目）。
+- 继续补充测试覆盖：编码检测本身、命令行导出，以及 App 层插件（Excel / Word / PDF）的提取行为（`tests/IcedAstroGrep.App.Tests` 已经可以承载这类测试）。
 
 ## [1.0.0] - 2026-09-10
 

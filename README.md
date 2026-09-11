@@ -63,10 +63,21 @@ on the way. It is a maintenance helper, not part of the build.
 |---|---|
 | `IcedAstroGrep.Core` | Search engine, filters, encoding, plugin contract |
 | `IcedAstroGrep.IFilter` | Windows IFilter wrapper |
-| `IcedAstroGrep.App` | WinForms UI (light theme) |
+| `IcedAstroGrep.App` | WinForms shell (light theme) |
 | `IcedAstroGrep.Core.Tests` | Engine tests |
+| `IcedAstroGrep.App.Tests` | Settings and iFilter integration tests |
 
-A WinUI 3 host is not in this tree; Core is kept UI-free so one can be added later.
+## Shells
+
+The engine is designed for **one Core, several shells**. `IcedAstroGrep.Core` deliberately references
+no UI framework — its `deps.json` contains only itself and NLog — so another shell can use it without
+pulling WinForms or WPF into the process.
+
+The WinForms shell is **frozen at 1.1.0**: it keeps receiving fixes, but new feature work belongs in
+the next shell. A WinUI 3 host is not in this tree yet. What a shell must supply, what the engine
+returns, the threading and cancellation rules, the shell-agnostic code that currently lives inside the
+WinForms assembly, and the decisions to settle first are all in
+[`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md).
 
 ## License
 

@@ -176,79 +176,73 @@ namespace IcedAstroGrep.Plugins.PDF
 				{
 					Regex reg = IcedAstroGrep.Core.Grep.BuildSearchRegEx(searchSpec);
 
-					// pull text from pdf file and parse it
-					string[] lines = ExtractText(file);
-
-					if (lines.Length > 0)
+					// pull text from pdf file and parse it; the converted text is read line by line
+					// so a large document is never held in memory as a whole
+					foreach (string line in ExtractText(file))
 					{
-						for (int i = 0; i < lines.Length; i++)
+						int posInStr = -1;
+						MatchCollection regCol = null;
+
+						if (searchSpec.UseRegularExpressions)
 						{
-							string line = lines[i];
+							regCol = reg.Matches(line);
 
-							int posInStr = -1;
-							MatchCollection regCol = null;
-
-							if (searchSpec.UseRegularExpressions)
+							if (regCol.Count > 0)
 							{
-								regCol = reg.Matches(line);
-
-								if (regCol.Count > 0)
+								posInStr = 1;
+							}
+						}
+						else
+						{
+							// If we are looking for whole worlds only, perform the check.
+							if (searchSpec.UseWholeWordMatching)
+							{
+								// if match is found, also check against our internal line hit count method to be sure they are in sync
+								Match mtc = reg.Match(line);
+								if (mtc != null && mtc.Success && IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec).Count > 0)
 								{
-									posInStr = 1;
+									posInStr = mtc.Index;
 								}
 							}
 							else
 							{
-								// If we are looking for whole worlds only, perform the check.
-								if (searchSpec.UseWholeWordMatching)
-								{
-									// if match is found, also check against our internal line hit count method to be sure they are in sync
-									Match mtc = reg.Match(line);
-									if (mtc != null && mtc.Success && IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec).Count > 0)
-									{
-										posInStr = mtc.Index;
-									}
-								}
-								else
-								{
-									posInStr = line.IndexOf(searchSpec.SearchText, searchSpec.UseCaseSensitivity ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
-								}
+								posInStr = line.IndexOf(searchSpec.SearchText, searchSpec.UseCaseSensitivity ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 							}
+						}
 
-							if (posInStr > -1)
+						if (posInStr > -1)
+						{
+							if (match == null)
 							{
-								if (match == null)
+								match = new MatchResult(file);
+
+								// found hit in file so just return
+								if (searchSpec.ReturnOnlyFileNames)
 								{
-									match = new MatchResult(file);
-
-									// found hit in file so just return
-									if (searchSpec.ReturnOnlyFileNames)
-									{
-										break;
-									}
+									break;
 								}
-
-								var matchLineFound = new MatchResultLine() { Line = line, LineNumber = -1, HasMatch = true, LongLineCharCount = searchSpec.LongLineCharCount, BeforeAfterCharCount = searchSpec.BeforeAfterCharCount };
-
-								if (searchSpec.UseRegularExpressions)
-								{
-									posInStr = regCol[0].Index;
-									match.SetHitCount(regCol.Count);
-
-									foreach (Match regExMatch in regCol)
-									{
-										matchLineFound.Matches.Add(new MatchResultLineMatch(regExMatch.Index, regExMatch.Length));
-									}
-								}
-								else
-								{
-									var lineMatches = IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec);
-									match.SetHitCount(lineMatches.Count);
-									matchLineFound.Matches = lineMatches;
-								}
-								matchLineFound.ColumnNumber = 1;
-								match.Matches.Add(matchLineFound);
 							}
+
+							var matchLineFound = new MatchResultLine() { Line = line, LineNumber = -1, HasMatch = true, LongLineCharCount = searchSpec.LongLineCharCount, BeforeAfterCharCount = searchSpec.BeforeAfterCharCount };
+
+							if (searchSpec.UseRegularExpressions)
+							{
+								posInStr = regCol[0].Index;
+								match.SetHitCount(regCol.Count);
+
+								foreach (Match regExMatch in regCol)
+								{
+									matchLineFound.Matches.Add(new MatchResultLineMatch(regExMatch.Index, regExMatch.Length));
+								}
+							}
+							else
+							{
+								var lineMatches = IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec);
+								match.SetHitCount(lineMatches.Count);
+								matchLineFound.Matches = lineMatches;
+							}
+							matchLineFound.ColumnNumber = 1;
+							match.Matches.Add(matchLineFound);
 						}
 					}
 				}
@@ -423,7 +417,7 @@ namespace IcedAstroGrep.Plugins.PDF
 		/// <history>
 		/// [Curtis_Beard]      09/09/2019	ADD: PDF plugin
 		/// </history>
-		private string[] ExtractText(FileInfo file)
+		private IEnumerable<string> ExtractText(FileInfo file)
 		{
 			string tempFolder = GetPDFFolder();
 
@@ -455,11 +449,7 @@ namespace IcedAstroGrep.Plugins.PDF
 
 					if (process.ExitCode == 0)
 					{
-						if (File.Exists(tempFileName))
-						{
-							return File.ReadAllLines(tempFileName);
-						}
-						else
+						if (!File.Exists(tempFileName))
 							throw new Exception(string.Format("pdftotext did not generate an output file when converting '{0}'", file.FullName));
 					}
 					else
@@ -488,10 +478,35 @@ namespace IcedAstroGrep.Plugins.PDF
 					}
 				}
 			}
+			catch (Exception)
+			{
+				// nothing is going to read the output, so do not leave it behind
+				TryDeleteFile(tempFileName);
+				throw;
+			}
+
+			// The lines are handed out lazily and the temporary file is removed once the caller stops
+			// enumerating (including an early break), so a large conversion is never read into memory
+			// as a whole.
+			return ReadLinesThenDelete(tempFileName);
+		}
+
+		private static IEnumerable<string> ReadLinesThenDelete(string path)
+		{
+			try
+			{
+				using (var reader = new StreamReader(path))
+				{
+					string line;
+					while ((line = reader.ReadLine()) != null)
+					{
+						yield return line;
+					}
+				}
+			}
 			finally
 			{
-				// the output has been consumed above, so it must never accumulate in %TEMP%
-				TryDeleteFile(tempFileName);
+				TryDeleteFile(path);
 			}
 		}
 

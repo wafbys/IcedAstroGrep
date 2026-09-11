@@ -74,6 +74,10 @@ namespace IcedAstroGrep.Windows
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
 
+			// .NET Core does not ship the legacy code pages; without them ExcelDataReader throws and
+			// a detected non-Unicode encoding cannot be reopened from the cache.
+			IcedAstroGrep.Core.LegacyEncodingSupport.EnsureRegistered();
+
 			// Unhandled exception handlers
 			if (!System.Diagnostics.Debugger.IsAttached)
 			{

@@ -36,6 +36,12 @@ namespace IcedAstroGrep.Plugins.MicrosoftWord
 	/// <history>[Curtis_Beard] 09/09/2019 ADD: OpenXML plugin</history>
 	public class MicrosoftWordOpenXMLPlugin : IDisposable, IIcedAstroGrepPlugin
 	{
+		/// <summary>
+		/// Largest main document part (uncompressed <c>word/document.xml</c>) this plug-in will read.
+		/// See <see cref="EnsureMainDocumentPartIsSearchable"/> for why there is a limit at all.
+		/// </summary>
+		private const long MaxMainDocumentPartBytes = 32L * 1024 * 1024;
+
 		private bool isInTableRow;
 
 		/// <summary>
@@ -136,81 +142,77 @@ namespace IcedAstroGrep.Plugins.MicrosoftWord
 				{
 					Regex reg = IcedAstroGrep.Core.Grep.BuildSearchRegEx(searchSpec);
 
-					// pull text from pdf file and parse it
-					string[] lines = ExtractText(file);
-
-					if (lines.Length > 0)
+					// pull text from the word file and parse it; the extraction is lazy so a large
+					// document is not held in memory as a whole
+					foreach (string rawLine in ExtractText(file))
 					{
-						for (int i = 0; i < lines.Length; i++)
+						string line = rawLine;
+						line = line.TrimEnd('\r');
+
+						int posInStr = -1;
+						MatchCollection regCol = null;
+
+						if (searchSpec.UseRegularExpressions)
 						{
-							string line = lines[i];
-							line = line.TrimEnd('\r');
+							regCol = reg.Matches(line);
 
-							int posInStr = -1;
-							MatchCollection regCol = null;
-
-							if (searchSpec.UseRegularExpressions)
+							if (regCol.Count > 0)
 							{
-								regCol = reg.Matches(line);
-
-								if (regCol.Count > 0)
+								posInStr = 1;
+							}
+						}
+						else
+						{
+							// If we are looking for whole worlds only, perform the check.
+							if (searchSpec.UseWholeWordMatching)
+							{
+								// if match is found, also check against our internal line hit
+								// count method to be sure they are in sync
+								Match mtc = reg.Match(line);
+								if (mtc != null && mtc.Success && IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec).Count > 0)
 								{
-									posInStr = 1;
+									posInStr = mtc.Index;
 								}
 							}
 							else
 							{
-								// If we are looking for whole worlds only, perform the check.
-								if (searchSpec.UseWholeWordMatching)
-								{
-									// if match is found, also check against our internal line hit
-									// count method to be sure they are in sync
-									Match mtc = reg.Match(line);
-									if (mtc != null && mtc.Success && IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec).Count > 0)
-									{
-										posInStr = mtc.Index;
-									}
-								}
-								else
-								{
-									posInStr = line.IndexOf(searchSpec.SearchText, searchSpec.UseCaseSensitivity ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
-								}
+								posInStr = line.IndexOf(searchSpec.SearchText, searchSpec.UseCaseSensitivity ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 							}
+						}
 
-							if (posInStr > -1)
+						if (posInStr > -1)
+						{
+							if (match == null)
 							{
-								if (match == null)
+								match = new MatchResult(file);
+
+								// found hit in file so just return
+								if (searchSpec.ReturnOnlyFileNames)
 								{
-									match = new MatchResult(file);
-
-									// found hit in file so just return
-									if (searchSpec.ReturnOnlyFileNames)
-									{
-										break;
-									}
+									break;
 								}
-
-								var matchLineFound = new MatchResultLine() { Line = line, LineNumber = -1, HasMatch = true, LongLineCharCount = searchSpec.LongLineCharCount, BeforeAfterCharCount = searchSpec.BeforeAfterCharCount };
-
-								if (searchSpec.UseRegularExpressions)
-								{
-									posInStr = regCol[0].Index;
-									match.SetHitCount(regCol.Count);
-
-									foreach (Match regExMatch in regCol)
-									{
-										matchLineFound.Matches.Add(new MatchResultLineMatch(regExMatch.Index, regExMatch.Length));
-									}
-								}
-								else
-								{
-									var lineMatches = IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec);
-									match.SetHitCount(lineMatches.Count);
-									matchLineFound.Matches = lineMatches;
-								}
-								matchLineFound.ColumnNumber = 1;
-								match.Matches.Add(matchLineFound);
 							}
+
+							var matchLineFound = new MatchResultLine() { Line = line, LineNumber = -1, HasMatch = true, LongLineCharCount = searchSpec.LongLineCharCount, BeforeAfterCharCount = searchSpec.BeforeAfterCharCount };
+
+							if (searchSpec.UseRegularExpressions)
+							{
+								posInStr = regCol[0].Index;
+								match.SetHitCount(regCol.Count);
+
+								foreach (Match regExMatch in regCol)
+								{
+									matchLineFound.Matches.Add(new MatchResultLineMatch(regExMatch.Index, regExMatch.Length));
+								}
+							}
+							else
+							{
+								var lineMatches = IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec);
+								match.SetHitCount(lineMatches.Count);
+								matchLineFound.Matches = lineMatches;
+							}
+							matchLineFound.ColumnNumber = 1;
+							match.Matches.Add(matchLineFound);
 						}
 					}
 				}
@@ -278,20 +280,78 @@ namespace IcedAstroGrep.Plugins.MicrosoftWord
 		/// </summary>
 		/// <param name="file"></param>
 		/// <returns></returns>
-		private string[] ExtractText(FileInfo file)
+		private IEnumerable<string> ExtractText(FileInfo file)
 		{
 			using (var input = File.Open(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 			{
 				if (file.Extension.StartsWith(".doc", StringComparison.OrdinalIgnoreCase))
 				{
-					return ExtractWordText(input, file);
+					EnsureMainDocumentPartIsSearchable(input, file);
+
+					foreach (var line in ExtractWordText(input, file))
+					{
+						yield return line;
+					}
 				}
 			}
-
-			return new string[0] { };
 		}
 
-		private void ExtractText(OpenXmlElement elem, IEnumerable<Style> docStyles, WordListManager wlm, StringBuilder sb)
+		/// <summary>
+		/// Rejects a Word document whose main document part is beyond
+		/// <see cref="MaxMainDocumentPartBytes"/>.
+		/// </summary>
+		/// <remarks>
+		/// The OpenXML SDK materializes the whole main document part as an object tree, and that tree
+		/// costs many times the XML it was parsed from (document.xml is also typically an order of
+		/// magnitude larger than the compressed package). A small .docx can therefore still exhaust
+		/// memory, and unlike the Excel and PDF plug-ins this one cannot be turned into a streaming
+		/// read without replacing the SDK's DOM with a forward-only XML reader. Until then the
+		/// document is refused with an explicit message rather than left to run the process out of
+		/// memory; the reading errors that result would be far less clear.
+		/// </remarks>
+		private static void EnsureMainDocumentPartIsSearchable(Stream stream, FileInfo file)
+		{
+			long mainPartSize = GetMainDocumentPartSize(stream);
+
+			if (mainPartSize > MaxMainDocumentPartBytes)
+			{
+				throw new Exception(string.Format(
+					"The Word document '{0}' is too large to search: its main document part is {1} MB, over the {2} MB limit",
+					file.FullName,
+					mainPartSize / (1024 * 1024),
+					MaxMainDocumentPartBytes / (1024 * 1024)));
+			}
+
+			if (stream.CanSeek)
+			{
+				stream.Seek(0, SeekOrigin.Begin);
+			}
+		}
+
+		/// <summary>
+		/// Reads the uncompressed length of the main document part straight from the package's central
+		/// directory, so nothing has to be decompressed to decide.
+		/// </summary>
+		/// <param name="stream">Stream positioned at the start of the document</param>
+		/// <returns>Uncompressed part size in bytes, or 0 when it cannot be determined</returns>
+		private static long GetMainDocumentPartSize(Stream stream)
+		{
+			try
+			{
+				using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true))
+				{
+					var entry = archive.GetEntry("word/document.xml");
+					return entry == null ? 0 : entry.Length;
+				}
+			}
+			catch (Exception)
+			{
+				// not a readable package: let the OpenXML reader report the real problem
+				return 0;
+			}
+		}
+
+		private IEnumerable<string> ExtractText(OpenXmlElement elem, IEnumerable<Style> docStyles, WordListManager wlm)
 		{
 			if (elem is Paragraph)
 			{
@@ -301,61 +361,115 @@ namespace IcedAstroGrep.Plugins.MicrosoftWord
 				string fmtNum = wlm.GetFormattedNumber(para);
 
 				if (isInTableRow)
-					sb.Append(indent).Append(fmtNum).Append(elem.InnerText).Append('\t');
+				{
+					// cells of one row are concatenated into a single line by the table row handler
+					yield return indent + fmtNum + elem.InnerText + "\t";
+				}
 				else
-					sb.Append(indent).Append(fmtNum).AppendLine(elem.InnerText);
+				{
+					// a paragraph's own text can contain a line break, which the old whole-document
+					// split used to separate
+					foreach (var part in (indent + fmtNum + elem.InnerText).Split('\n'))
+					{
+						yield return part;
+					}
+				}
 			}
 			else if (elem is TableRow)
 			{
 				isInTableRow = true;
 
-				sb.Append('\t');
+				var row = new StringBuilder();
+				row.Append('\t');
 
 				foreach (var child in elem)
 				{
-					ExtractText(child, docStyles, wlm, sb);
+					foreach (var text in ExtractText(child, docStyles, wlm))
+					{
+						row.Append(text);
+					}
 				}
 
-				sb.AppendLine();
-
 				isInTableRow = false;
+
+				foreach (var part in row.ToString().Split('\n'))
+				{
+					yield return part;
+				}
 			}
 			else
 			{
 				foreach (var child in elem)
 				{
-					ExtractText(child, docStyles, wlm, sb);
+					foreach (var text in ExtractText(child, docStyles, wlm))
+					{
+						yield return text;
+					}
 				}
 			}
 		}
 
-		private string[] ExtractWordText(Stream stream, FileInfo file)
+		private IEnumerable<string> ExtractWordText(Stream stream, FileInfo file)
 		{
-			try
+			using (IEnumerator<string> enumerator = ExtractWordTextCore(stream).GetEnumerator())
 			{
-				StringBuilder sb = new StringBuilder();
-
-				// Open a given Word document as readonly
-				using (WordprocessingDocument doc = WordprocessingDocument.Open(stream, false))
+				while (true)
 				{
-					var body = doc.MainDocumentPart.Document.Body;
-					var docStyles = doc.MainDocumentPart.StyleDefinitionsPart.Styles
-						.Where(r => r is Style).Select(r => r as Style);
+					string current;
 
-					WordListManager wlm = WordListManager.Empty;
-					if (doc.MainDocumentPart.NumberingDefinitionsPart != null && doc.MainDocumentPart.NumberingDefinitionsPart.Numbering != null)
+					try
 					{
-						wlm = new WordListManager(doc.MainDocumentPart.NumberingDefinitionsPart.Numbering);
+						if (!enumerator.MoveNext())
+						{
+							yield break;
+						}
+
+						current = enumerator.Current;
+					}
+					catch (Exception ex)
+					{
+						// a lazy iterator cannot wrap its own yields in a try/catch, so the extraction
+						// error is translated around the move instead
+						throw new Exception(string.Format("Failed to extract text from inside Word file '{0}', error: {1}", file.FullName, ex));
 					}
 
-					ExtractText(body, docStyles, wlm, sb);
+					yield return current;
+				}
+			}
+		}
+
+		private IEnumerable<string> ExtractWordTextCore(Stream stream)
+		{
+			// Open a given Word document as readonly
+			using (WordprocessingDocument doc = WordprocessingDocument.Open(stream, false))
+			{
+				var body = doc.MainDocumentPart.Document.Body;
+				if (body == null)
+				{
+					yield break;
 				}
 
-				return sb.ToString().Split('\n');
-			}
-			catch (Exception ex)
-			{
-				throw new Exception(string.Format("Failed to extract text from inside Word file '{0}', error: {1}", file.FullName, ex));
+				// A document without a styles part is valid (Word simply has nothing to look up);
+				// dereferencing it unconditionally crashed the plug-in with a NullReferenceException.
+				var styleDefinitions = doc.MainDocumentPart.StyleDefinitionsPart?.Styles;
+				var docStyles = styleDefinitions == null
+					? Enumerable.Empty<Style>()
+					: styleDefinitions.Elements<Style>();
+
+				WordListManager wlm = WordListManager.Empty;
+				if (doc.MainDocumentPart.NumberingDefinitionsPart != null && doc.MainDocumentPart.NumberingDefinitionsPart.Numbering != null)
+				{
+					wlm = new WordListManager(doc.MainDocumentPart.NumberingDefinitionsPart.Numbering);
+				}
+
+				foreach (var line in ExtractText(body, docStyles, wlm))
+				{
+					yield return line;
+				}
+
+				// the document used to be emitted as one string ending in a newline and then split,
+				// which always produced a trailing empty line
+				yield return string.Empty;
 			}
 		}
 

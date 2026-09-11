@@ -22,6 +22,10 @@
 - **P1-4 iFilter 失败导致静默漏报**：`FileHandlersPlugin` 在任何 iFilter 失败（读取超时、内容截断、文件过大、格式错误、口令保护等）时，现在既上报搜索错误、又置 `IsFileSkipped` 让默认文本搜索继续处理该文件。原先只上报错误却不回退，文件既没被 iFilter 搜到、也不会走默认搜索，等于漏报。读取超时改为显式设置（60 秒），不再依赖库默认值。`Extensions` 不再返回插件名 `"File Handlers"`——它在插件列表里被当作"扩展名"列显示，改为说明该插件依赖系统 iFilter。
 - **P1-4 `FilterSearcher.FileContainsText` 大小写错误**：原先只把行文本 `ToUpperInvariant()` 而搜索词没有同步大写，导致任何非大写搜索词都永远匹配不到；改为按 `ignoreCase` 使用 `StringComparison` 比较，并忽略 `null` 搜索词。
 - **P1-4（复核更正）**：评审称 "File Handlers" 插件"默认**启用**"有误。`PluginManager.cs:157` 传给 `PluginWrapper` 的参数是 `internalPlugin: true, enabled: false`（构造函数签名见 `PluginWrapper.cs:64`），该插件本就是**默认关闭**的；"先于默认搜索处理每一个文件"只发生在用户手动启用之后。
+- **P1-8 插件把整份文档读入内存**：Excel 与 PDF 插件改为逐行产出——Excel 直接按行消费 `ExcelDataReader` 的前向读取器（不再为每个工作表拼一个大字符串、再切分成数组、再拷进列表），PDF 转换结果用 `StreamReader` 逐行读取（不再 `File.ReadAllLines`），且临时输出在枚举结束时删除（含提前 `break` 的情形）。实测同一份 30 万行 × 120 字符的 xlsx：旧实现托管堆峰值 **295 MB**，新实现 **11 MB**，提取结果逐行完全一致。Word 插件因 OpenXML SDK 会把整份 `word/document.xml` 物化为对象树、无法在不改用前向 XML 读取器的前提下流式化，改为对**主文档部件解压后大小**设 32 MB 上限并显式报错（该值直接取自 zip 中央目录，无需解压）。一个 590 KB 的包解压后是 40 MB 的 document.xml，正说明这道限制的必要性。
+- **新发现：Excel 插件在 .NET 10 上完全不可用**：`ExcelDataReader` 的配置构造函数会解析回退代码页 1252，而 .NET Core 默认不注册旧代码页，于是每个 .xls/.xlsx 都抛 `NotSupportedException`。新增 `LegacyEncodingSupport.EnsureRegistered()`（注册 `CodePagesEncodingProvider`，在应用启动与 Excel 插件内各调用一次）并引入 `System.Text.Encoding.CodePages` 包。这同时修好了编码检测路径中 `Encoding.GetEncoding(codePage)` 对旧代码页的失败。
+- **新发现：Word 插件在没有 styles 部件的文档上 `NullReferenceException`**：`StyleDefinitionsPart` 为 null 时直接解引用。已改为空安全（无样式部件是合法文档）。
+- **新发现（评审更正）**：评审 §5-1 将多节点 `dotnet build` 失败归因于 SDK 缺文件有误，实为沙箱 ACL 受限令牌禁止命名管道；关闭沙箱后同一条命令 `Build succeeded`。`dotnet test` 同理（vstest 测试宿主需要 `OpenProcess` 父进程权限），关闭沙箱后 26 个测试全部通过。
 
 ### 测试
 

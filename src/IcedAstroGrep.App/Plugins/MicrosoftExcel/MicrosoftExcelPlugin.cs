@@ -153,85 +153,81 @@ namespace IcedAstroGrep.Plugins.MicrosoftExcel
 				{
 					Regex reg = IcedAstroGrep.Core.Grep.BuildSearchRegEx(searchSpec);
 
-					// pull text from pdf file and parse it
-					List<Tuple<string, string>> lines = ExtractText(file);
-
-					if (lines.Count > 0)
+					// pull text from the excel file and parse it; the extraction is lazy so the
+					// workbook is never held in memory as a whole
+					foreach (Tuple<string, string> lineEntry in ExtractText(file))
 					{
-						for (int i = 0; i < lines.Count; i++)
+						string line = lineEntry.Item2.TrimEnd('\r');
+						string marginText = string.Format("Sheet {0}: ", lineEntry.Item1);
+
+						int posInStr = -1;
+						MatchCollection regCol = null;
+
+						if (searchSpec.UseRegularExpressions)
 						{
-							string line = lines[i].Item2.TrimEnd('\r');
-							string marginText = string.Format("Sheet {0}: ", lines[i].Item1);
+							regCol = reg.Matches(line);
 
-							int posInStr = -1;
-							MatchCollection regCol = null;
-
-							if (searchSpec.UseRegularExpressions)
+							if (regCol.Count > 0)
 							{
-								regCol = reg.Matches(line);
-
-								if (regCol.Count > 0)
+								posInStr = 1;
+							}
+						}
+						else
+						{
+							// If we are looking for whole worlds only, perform the check.
+							if (searchSpec.UseWholeWordMatching)
+							{
+								// if match is found, also check against our internal line hit
+								// count method to be sure they are in sync
+								Match mtc = reg.Match(line);
+								if (mtc != null && mtc.Success && IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec).Count > 0)
 								{
-									posInStr = 1;
+									posInStr = mtc.Index;
 								}
 							}
 							else
 							{
-								// If we are looking for whole worlds only, perform the check.
-								if (searchSpec.UseWholeWordMatching)
-								{
-									// if match is found, also check against our internal line hit
-									// count method to be sure they are in sync
-									Match mtc = reg.Match(line);
-									if (mtc != null && mtc.Success && IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec).Count > 0)
-									{
-										posInStr = mtc.Index;
-									}
-								}
-								else
-								{
-									posInStr = line.IndexOf(searchSpec.SearchText, searchSpec.UseCaseSensitivity ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
-								}
+								posInStr = line.IndexOf(searchSpec.SearchText, searchSpec.UseCaseSensitivity ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 							}
+						}
 
-							if (posInStr > -1)
+						if (posInStr > -1)
+						{
+							if (match == null)
 							{
-								if (match == null)
+								match = new MatchResult(file);
+
+								// found hit in file so just return
+								if (searchSpec.ReturnOnlyFileNames)
 								{
-									match = new MatchResult(file);
-
-									// found hit in file so just return
-									if (searchSpec.ReturnOnlyFileNames)
-									{
-										break;
-									}
+									break;
 								}
-
-								var matchLineFound = new MatchResultLine() { Line = marginText + line, LineNumber = -1, HasMatch = true, LongLineCharCount = searchSpec.LongLineCharCount, BeforeAfterCharCount = searchSpec.BeforeAfterCharCount };
-
-								if (searchSpec.UseRegularExpressions)
-								{
-									match.SetHitCount(regCol.Count);
-
-									foreach (Match regExMatch in regCol)
-									{
-										matchLineFound.Matches.Add(new MatchResultLineMatch(regExMatch.Index + marginText.Length, regExMatch.Length));
-									}
-								}
-								else
-								{
-									var lineMatches = IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec);
-									match.SetHitCount(lineMatches.Count);
-									matchLineFound.Matches = lineMatches;
-									foreach (var lineMatch in matchLineFound.Matches)
-									{
-										lineMatch.StartPosition += marginText.Length;
-										lineMatch.OriginalStartPosition += marginText.Length;
-									}
-								}
-								matchLineFound.ColumnNumber = 1;
-								match.Matches.Add(matchLineFound);
 							}
+
+							var matchLineFound = new MatchResultLine() { Line = marginText + line, LineNumber = -1, HasMatch = true, LongLineCharCount = searchSpec.LongLineCharCount, BeforeAfterCharCount = searchSpec.BeforeAfterCharCount };
+
+							if (searchSpec.UseRegularExpressions)
+							{
+								match.SetHitCount(regCol.Count);
+
+								foreach (Match regExMatch in regCol)
+								{
+									matchLineFound.Matches.Add(new MatchResultLineMatch(regExMatch.Index + marginText.Length, regExMatch.Length));
+								}
+							}
+							else
+							{
+								var lineMatches = IcedAstroGrep.Core.Grep.RetrieveLineMatches(line, searchSpec);
+								match.SetHitCount(lineMatches.Count);
+								matchLineFound.Matches = lineMatches;
+								foreach (var lineMatch in matchLineFound.Matches)
+								{
+									lineMatch.StartPosition += marginText.Length;
+									lineMatch.OriginalStartPosition += marginText.Length;
+								}
+							}
+							matchLineFound.ColumnNumber = 1;
+							match.Matches.Add(matchLineFound);
 						}
 					}
 				}
@@ -313,33 +309,50 @@ namespace IcedAstroGrep.Plugins.MicrosoftExcel
 		{
 		}
 
-		private List<Tuple<string, string>> ExtractExcelText(Stream stream, FileInfo file)
+		/// <summary>
+		/// Extracts the text of an Excel file one row at a time.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately lazy: the previous implementation built the whole workbook as one string per
+		/// sheet, then split it into an array and copied that into a list, so a large workbook needed
+		/// several times its own text size in memory and could exhaust it. ExcelDataReader is a
+		/// forward-only reader, so rows can be handed to the caller as they are read.
+		/// </remarks>
+		private IEnumerable<Tuple<string, string>> ExtractExcelText(Stream stream, FileInfo file)
 		{
-			try
+			using (IEnumerator<Tuple<string, string>> enumerator = ExtractExcelTextCore(stream).GetEnumerator())
 			{
-				var sheets = ExtractExcelTextFromSheets(stream);
-				List<Tuple<string, string>> lines = new List<Tuple<string, string>>();
-				foreach (var kvPair in sheets)
+				while (true)
 				{
-					//lines.Add(kvPair.Value);
-					string[] sheetLines = kvPair.Value.Split('\n');
-					foreach (string line in sheetLines)
-					{
-						lines.Add(new Tuple<string, string>(kvPair.Key, line.TrimEnd('\r')));
-					}
-				}
+					Tuple<string, string> current;
 
-				return lines;
-			}
-			catch (Exception ex)
-			{
-				throw new Exception(string.Format("Failed to extract text from inside Excel file '{0}', error: {1}", file.FullName, ex));
+					try
+					{
+						if (!enumerator.MoveNext())
+						{
+							yield break;
+						}
+
+						current = enumerator.Current;
+					}
+					catch (Exception ex)
+					{
+						// a lazy iterator cannot wrap its own yields in a try/catch, so the extraction
+						// error is translated around the move instead
+						throw new Exception(string.Format("Failed to extract text from inside Excel file '{0}', error: {1}", file.FullName, ex));
+					}
+
+					yield return current;
+				}
 			}
 		}
 
-		private List<KeyValuePair<string, string>> ExtractExcelTextFromSheets(Stream stream)
+		private IEnumerable<Tuple<string, string>> ExtractExcelTextCore(Stream stream)
 		{
-			List<KeyValuePair<string, string>> results = new List<KeyValuePair<string, string>>();
+			// ExcelDataReader resolves its fallback code page (1252) in its configuration constructor,
+			// which throws unless the legacy encodings are registered; do it here so the plug-in works
+			// no matter which host loaded it.
+			IcedAstroGrep.Core.LegacyEncodingSupport.EnsureRegistered();
 
 			// Auto-detect format, supports:
 			// - Binary Excel files (2.0-2003 format; *.xls)
@@ -348,22 +361,30 @@ namespace IcedAstroGrep.Plugins.MicrosoftExcel
 			{
 				do
 				{
-					StringBuilder sb = new StringBuilder();
+					string sheetName = reader.Name;
+
 					while (reader.Read())
 					{
+						var row = new StringBuilder();
+
 						for (int col = 0; col < reader.FieldCount; col++)
 						{
-							sb.Append(GetFormattedValue(reader, col, System.Threading.Thread.CurrentThread.CurrentCulture)).Append('\t');
+							row.Append(GetFormattedValue(reader, col, System.Threading.Thread.CurrentThread.CurrentCulture)).Append('\t');
 						}
 
-						sb.Append(Environment.NewLine);
+						// a cell value can itself contain a line break, which used to be split apart when
+						// the whole sheet was split as one string
+						foreach (string part in row.ToString().Split('\n'))
+						{
+							yield return new Tuple<string, string>(sheetName, part);
+						}
 					}
 
-					results.Add(new KeyValuePair<string, string>(reader.Name, sb.ToString()));
+					// every sheet contributed a trailing empty line before (the sheet string ended with
+					// a newline and was then split); keep that so extraction output is unchanged
+					yield return new Tuple<string, string>(sheetName, string.Empty);
 				} while (reader.NextResult());
 			}
-
-			return results;
 		}
 
 		/// <summary>
@@ -372,17 +393,18 @@ namespace IcedAstroGrep.Plugins.MicrosoftExcel
 		/// </param>
 		/// <returns>
 		/// </returns>
-		private List<Tuple<string, string>> ExtractText(FileInfo file)
+		private IEnumerable<Tuple<string, string>> ExtractText(FileInfo file)
 		{
 			using (var input = File.Open(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 			{
 				if (file.Extension.StartsWith(".xls", StringComparison.OrdinalIgnoreCase))
 				{
-					return ExtractExcelText(input, file);
+					foreach (var line in ExtractExcelText(input, file))
+					{
+						yield return line;
+					}
 				}
 			}
-
-			return new List<Tuple<string, string>>();
 		}
 
 		private string GetFormattedValue(IExcelDataReader reader, int columnIndex, System.Globalization.CultureInfo culture)

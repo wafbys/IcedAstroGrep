@@ -281,7 +281,8 @@ public PDFPlugin()
 | 2 | 已修复 | `EncodingCache.RemoveItem` 补上字典移除；内部加锁 + 线程安全单例；淘汰改为基于条目数自洽、LRU 更新/删除 O(1)；新增 `Grep.AbortAndWait`，`frmMain.StartSearch` 在开新搜索前中止并等待旧搜索线程退出。 |
 | 3 | 已修复 | `FilterItem` 的字段分隔符 `|` 与列表分隔符 `<` 现在会被转义；新写入的条目带 `~v2~` 前缀，`FromString` 据此区分新格式与旧格式——旧配置（不含前缀）完全不转义，因此其中的反斜杠（UNC 路径、正则）不会被误当转义符，向后兼容。同时补上 `tests/IcedAstroGrep.Core.Tests/FilterItemTests.cs`（22 个用例）。 |
 | 4 | 已修复 | `PDFPlugin` 构造函数不再抛出：提取失败只记录日志并标记为不可用；内容一致时不再重写约 1 MB 的 `pdftotext.exe`。`pdftotext` 增加 60 秒超时 + `Kill(entireProcessTree: true)`，输出名加入全路径哈希，输出文件在 `finally` 删除，`Unload` 清理过期残留。另修正由终结器调用、会删除共享临时目录的 `Dispose()`。**取消令牌未接入**：插件契约 `IIcedAstroGrepPlugin.Grep` 没有令牌参数，接入需改接口（影响所有插件），超出本项范围；超时已把取消延迟限制在 60 秒内。 |
-| 5–10 | 待处理 | 尚未动手。 |
+| 5 | 已修复（P1-3 部分残留） | `Read()` 改用 1 长度缓冲区；`_chunk.flags` 补 `default`（`CHUNKSTATE` 是 `[Flags]`，组合值合法）、零长度文本推进、新增"零进展"守卫（连续 64 次无字符且无新块 → 抛 `IFFilterPartiallyFiltered`）；`FilterReaderOptions` 默认启用 `TimeoutWithException`（60 秒）；`CHUNK_VALUE` 去掉会泄漏的 `AllocHGlobal`、改用 `PropVariantClear` + `FreeCoTaskMem`；`Dispose` 幂等化并加 `IsComObject` 判断，终结器不再抛异常。**残留**：`FilterLoader` 的 IStream 释放 / 单次 Read / HRESULT 检查、`Job.cs` 泄漏、`VT_BLOB`/`VT_BSTR` 的 AV 路径。 |
+| 6–10 | 待处理 | 尚未动手。 |
 
 > 验证结果：`dotnet build -m:1 -nodeReuse:false` 成功（0 warning / 0 error）。
 > `dotnet test` 在本沙箱下仍必然失败——vstest 测试宿主调用 `Process.EnableRaisingEvents` 时被拒绝（`Win32Exception (5): Access is denied`），与 §5-2 的观察一致。
@@ -289,4 +290,6 @@ public PDFPlugin()
 > - P0 轮次：4 个既有测试 + 9 项新增检查（正则超时同步中止 / 异步上报、正则单次编译、缓存移除 / 淘汰 / 8 线程并发、`AbortAndWait` 空闲与运行中）共 13 项通过；
 > - P1-5 轮次：`FilterItemTests` 22 个用例 + `GrepTests` 4 个用例共 26 项通过（`FilterItemTests` 已入库，可在能跑 `dotnet test` 的环境中直接执行）；
 > - P1-6/P1-7 轮次：`PDFPlugin` 6 项检查通过——含真实超时路径（60.0 秒触发、假转换器的孙进程心跳在 8.7 秒后停止，证明整棵进程树被回收）。
-> 临时 harness 未入库；`PDFPlugin` 的检查因其位于 App 项目、而 `Core.Tests` 只引用 Core，未固化为仓库测试。
+> - P1-1/P1-2/P1-3 轮次：把 IFilter 源码编进 harness，用实现内部 `IFilter` 接口的**脚本化假滤镜**驱动 `Read()`，12 项检查通过——含 `Read()` 返回首字符、真实文件端到端读取、未知 flags/零长度文本/持续 GetChunk 失败三条死循环路径均在 0 ms 内以异常收敛、默认超时确实触发、2000 次 CHUNK_VALUE 读取与释放无堆损坏。
+>   **该轮次抓到并修正了一个自引入的严重缺陷**：给 GetChunk 结果 switch 添加 `default: _chunkValid = false;` 会把正常的 `S_OK` 也判为无效，使整条 iFilter 路径读不出任何内容（正是 §P1-4 所警告的静默假阴性）。因第 516 行已把 `_chunkValid` 赋为 `result == S_OK`，`default` 分支不应再改动它。
+> 临时 harness 未入库；`PDFPlugin` 与 `FilterReader` 的检查因分别位于 App 项目、需要假 COM 滤镜，未固化为仓库测试。

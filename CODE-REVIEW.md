@@ -290,7 +290,9 @@ public PDFPlugin()
 | 5 | 已修复（P1-3 部分残留） | `Read()` 改用 1 长度缓冲区；`_chunk.flags` 补 `default`（`CHUNKSTATE` 是 `[Flags]`，组合值合法）、零长度文本推进、新增"零进展"守卫（连续 64 次无字符且无新块 → 抛 `IFFilterPartiallyFiltered`）；`FilterReaderOptions` 默认启用 `TimeoutWithException`（60 秒）；`CHUNK_VALUE` 去掉会泄漏的 `AllocHGlobal`、改用 `PropVariantClear` + `FreeCoTaskMem`；`Dispose` 幂等化并加 `IsComObject` 判断，终结器不再抛异常。**残留**：`FilterLoader` 的 IStream 释放 / 单次 Read / HRESULT 检查、`Job.cs` 泄漏、`VT_BLOB`/`VT_BSTR` 的 AV 路径。 |
 | 6 | 已修复（"默认关闭"一项经复核本就满足） | iFilter 任何失败现在既上报错误、又置 `IsFileSkipped` 让默认文本搜索继续处理该文件（原先只上报不回退 = 漏报）；读取超时显式设为 60 秒；`Extensions` 不再返回插件名。`FilterSearcher.FileContainsText` 改为按 `ignoreCase` 用 `StringComparison` 比较（原先只大写行文本，非大写搜索词永远匹配不到）。"默认关闭"经复核**本就满足**：`PluginManager.cs:157` 传的是 `enabled: false`。 |
 | 7 | 已修复 | Excel 与 PDF 改为逐行产出：Excel 按行消费 `ExcelDataReader` 的前向读取器（不再逐表拼大字符串 → 切分 → 拷入列表），PDF 用 `StreamReader` 逐行读取（不再 `File.ReadAllLines`）且临时输出在枚举结束时删除。实测同一份 30 万行 xlsx：托管堆峰值 **295 MB → 11 MB**，提取结果逐行一致。Word 因 OpenXML SDK 必须把整份 `word/document.xml` 物化为对象树，改为对主文档部件**解压后**大小设 32 MB 上限并显式报错（值取自 zip 中央目录，无需解压）。 |
-| 8–10 | 待处理 | 尚未动手。 |
+| 8 | 待处理 | 尚未动手：便携目录不可写时静默不保存设置、`SettingsIO` 非原子写入。 |
+| 9 | 已修复 | 测试由 26 增至 **46**：新增 `GrepSearchTests`（否定 / 上下文行 / 仅文件名 / 最低命中数 / 扩展名·文件名·目录排除 / 子目录递归）、`GrepRegexTimeoutTests`（超时同步抛错与异步上报）、`GrepAbortTests`、`EncodingCacheTests`（移除 / 淘汰一致性 / 并发）、`PluginContractTests`（失败但跳过 → 上报 + 回退；声称已处理 → 压制默认搜索）。关闭 xUnit 并行（`Grep` 与 `EncodingCache` 有进程级状态）。新增 `.github/workflows/ci.yml`（`windows-latest` 上 restore/build/test，Release）。 |
+| 10 | 待处理 | 尚未动手：补 `pdftotext` 的第三方许可说明、清理 `Legacy` 注册表代码与残留死代码。 |
 
 > 修复过程中**新发现**的三个缺陷（原评审未提及，均已修复）：
 > 1. **Excel 插件在本分支上完全不可用**——`ExcelDataReader` 的配置构造函数解析回退代码页 1252，而 .NET Core 默认不注册旧代码页，每个 .xls/.xlsx 都抛 `NotSupportedException`。新增 `LegacyEncodingSupport.EnsureRegistered()`（注册 `CodePagesEncodingProvider`）+ `System.Text.Encoding.CodePages` 包；这同时修好了编码检测里 `Encoding.GetEncoding(codePage)` 对旧代码页的失败。
@@ -308,3 +310,4 @@ public PDFPlugin()
 > - P1-4 轮次：9 项检查通过——`FilterSearcher` 的大写/混合大小写/大小写敏感/null 词、`Extensions` 不再冒充扩展名列表、无 iFilter 的文件交还默认搜索、以及两项端到端：①「插件报错 + `IsFileSkipped`」确实同时产生"上报错误"与"默认搜索命中"（这正是本项修复所依赖的契约）；②启用 File Handlers 后真实系统 iFilter 命中且 `FromPlugin == true`（若沿用第 5 项那个自引入缺陷，此项会失败）。
 > 临时 harness 未入库；`PDFPlugin` 与 `FilterReader` 的检查因分别位于 App 项目、需要假 COM 滤镜，未固化为仓库测试。
 > - P1-8 轮次：以"改动前先记录提取结果、改动后逐行比对"的方式验证——Excel（多工作表、内嵌制表符、含 `|`/`<` 的单元格、每表末尾空行）与 Word（段落、空段落、表格行）的提取结果 17 行**完全一致**；内存峰值以同一份 30 万行 xlsx 前后对比（295 MB → 11 MB）；PDF 用手写 xref 的最小 PDF 首次做到端到端（命中正确，且全量扫描与提前 `break` 两条路径都无临时文件残留）；Word 上限以 40 MB 部件（590 KB 包）验证拒绝并给出明确信息。
+> - §6-9 轮次：权限解除后 **`dotnet test` 直接可用**，新增测试后 **46/46 通过**。为避免"测试通过但抓不到回归"，做了一次抽查：临时把 `EncodingCache.RemoveItem` 还原成修复前写法，`RemoveItem_RemovesTheEntryFromTheCache` 随即失败（`Assert.False()` Failure），恢复后重新通过。CI 使用的三条 Release 命令（`dotnet restore` / `build --no-restore -c Release` / `test --no-build -c Release`）已在本地逐一验证通过；GitHub Actions 本身无法在本地运行，因此 runner 镜像与 `10.0.x` SDK 的可用性未经验证。

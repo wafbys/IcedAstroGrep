@@ -19,6 +19,9 @@
 - **P1-2 iFilter 读取循环可 100% CPU 空转**：`CHUNKSTATE` 是 `[Flags]` 枚举，组合值合法，原先 `switch (_chunk.flags)` 无 `default`，一个 case 都不命中且块保持有效，会在纯托管代码里无限空转；`S_OK` 但零长度文本且无分隔符时也会重复读取同一个块。现已补上 `default` 分支、让零长度文本推进到下一块，并增加"零进展"守卫——连续 64 次既无字符产出也无新块时以 `IFFilterPartiallyFiltered` 显式报错，而不是死循环或静默截断。读取超时默认启用（`TimeoutWithException`，60 秒/文档；显式设 `NoTimeout` 可退出），选择"抛异常"而非"静默当读完"是为了不产生假阴性。
 - **P1-3（部分）原生内存误用**：`CHUNK_VALUE` 路径不再用 `Marshal.AllocHGlobal` 预分配一块会被滤镜指针覆盖的内存（每个值块泄漏约 24 字节），也不再用 `FreeHGlobal` 释放滤镜以 `CoTaskMemAlloc` 分配的内存；改为读取后对该 PROPVARIANT 恰好调用一次 `PropVariantClear`，再用 `FreeCoTaskMem` 释放变体本身。`Dispose` 增加幂等保护与 `IsComObject` 判断，`ReleaseComObject` 不再从终结器抛出（终结器抛异常会直接终止进程）。
 - **尚未处理（P1-3 剩余）**：`FilterLoader` 的 `IStream` 从不释放、单次 `Read` 不保证填满、`CreateStreamOnHGlobal` 的 HRESULT 未检查；`Job.cs` 的句柄与内存泄漏；`VT_BLOB`/`VT_BSTR` 对畸形文档的可致 AV 路径。
+- **P1-4 iFilter 失败导致静默漏报**：`FileHandlersPlugin` 在任何 iFilter 失败（读取超时、内容截断、文件过大、格式错误、口令保护等）时，现在既上报搜索错误、又置 `IsFileSkipped` 让默认文本搜索继续处理该文件。原先只上报错误却不回退，文件既没被 iFilter 搜到、也不会走默认搜索，等于漏报。读取超时改为显式设置（60 秒），不再依赖库默认值。`Extensions` 不再返回插件名 `"File Handlers"`——它在插件列表里被当作"扩展名"列显示，改为说明该插件依赖系统 iFilter。
+- **P1-4 `FilterSearcher.FileContainsText` 大小写错误**：原先只把行文本 `ToUpperInvariant()` 而搜索词没有同步大写，导致任何非大写搜索词都永远匹配不到；改为按 `ignoreCase` 使用 `StringComparison` 比较，并忽略 `null` 搜索词。
+- **P1-4（复核更正）**：评审称 "File Handlers" 插件"默认**启用**"有误。`PluginManager.cs:157` 传给 `PluginWrapper` 的参数是 `internalPlugin: true, enabled: false`（构造函数签名见 `PluginWrapper.cs:64`），该插件本就是**默认关闭**的；"先于默认搜索处理每一个文件"只发生在用户手动启用之后。
 
 ### 测试
 
@@ -26,7 +29,7 @@
 
 ### 已知问题
 
-- 评审记录中的 P1/P2 项尚未处理：IFilter 互操作资源泄漏与死循环、File Handlers 插件默认接管所有文件、`FilterItem` 序列化缺少转义、`PDFPlugin` 启动期写盘与子进程无超时/回收、插件整文档读入内存等。
+- 评审记录中尚未处理的 P1/P2 项：`FilterLoader` 的 IStream 释放与 HRESULT 检查、`Job.cs` 的资源泄漏、`VT_BLOB`/`VT_BSTR` 的畸形文档 AV 路径、插件把整份文档读入内存、`SettingsIO` 非原子写入等。
 
 ### 计划中
 

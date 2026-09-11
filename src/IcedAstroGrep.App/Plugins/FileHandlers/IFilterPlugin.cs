@@ -39,6 +39,17 @@ namespace IcedAstroGrep.Plugins.FileHandlers
 	/// </history>
 	public class FileHandlersPlugin : IIcedAstroGrepPlugin
 	{
+		/// <summary>
+		/// Explicit, bounded read options. A stuck or extremely slow system iFilter must not hold the
+		/// search open, and the timeout has to be visible rather than silently truncating the
+		/// document, so it is reported as an error (which then falls back to the default text search).
+		/// </summary>
+		private static readonly FilterReaderOptions ReaderOptions = new FilterReaderOptions
+		{
+			ReaderTimeout = FilterReaderTimeout.TimeoutWithException,
+			Timeout = FilterReaderOptions.DefaultTimeoutMilliseconds
+		};
+
 		private bool __IsAvailable;
 		private bool __IsFileSkipped = false;
 
@@ -77,8 +88,12 @@ namespace IcedAstroGrep.Plugins.FileHandlers
 		/// <summary>
 		/// Gets the valid extensions for this grep type.
 		/// </summary>
-		/// <remarks>Comma separated list of strings.</remarks>
-		public string Extensions => "File Handlers";
+		/// <remarks>
+		/// This plug-in delegates to whatever iFilter the system has registered, so it has no
+		/// extension list of its own. The value is display-only (the plug-ins list) and previously
+		/// repeated the plug-in name in the Extensions column, which read as if it were a list.
+		/// </remarks>
+		public string Extensions => "System iFilter (any registered type)";
 
 		/// <summary>
 		/// Checks to see if the plugin is available on this system.
@@ -132,7 +147,7 @@ namespace IcedAstroGrep.Plugins.FileHandlers
 			try
 			{
 				Regex reg = IcedAstroGrep.Core.Grep.BuildSearchRegEx(searchSpec);
-				using (FilterReader reader = new FilterReader(file.FullName))
+				using (FilterReader reader = new FilterReader(file.FullName, filterReaderOptions: ReaderOptions))
 				{
 					string line;
 					while ((line = reader.ReadLine()) != null)
@@ -206,7 +221,8 @@ namespace IcedAstroGrep.Plugins.FileHandlers
 			}
 			catch (IFilterTextReader.Exceptions.IFFilterNotFound iEx)
 			{
-				// record warning to log file but don't report this error back up to grep processing
+				// No system iFilter for this file type is a normal outcome, not a search failure, so
+				// only the log records it; the file is handed to the default text search below.
 				IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Warn(iEx, $"iFilter not found for {file.FullName}");
 
 				// flag this particular file to be searched by another plug-in/common grep processing
@@ -214,7 +230,12 @@ namespace IcedAstroGrep.Plugins.FileHandlers
 			}
 			catch (Exception funcEx)
 			{
+				// The iFilter failed on this document (timeout, truncation, too large, malformed,
+				// password protected, ...). Report it so the degradation is visible, and still skip
+				// so the default text search reads the file: returning no hits quietly would be a
+				// false negative, the worst possible outcome for a search tool.
 				ex = funcEx;
+				__IsFileSkipped = true;
 			}
 
 			return match;

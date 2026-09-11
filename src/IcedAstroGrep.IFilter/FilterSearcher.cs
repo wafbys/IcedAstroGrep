@@ -91,10 +91,11 @@ namespace IFilterTextReader
                 if (string.IsNullOrEmpty(line))
                     return false;
 
-                if (ignoreCase)
-                    line = line.ToUpperInvariant();
+                // Compare with the requested comparison instead of upper-casing only the line: doing
+                // that left every search term that was not already upper-case unable to ever match.
+                var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
-                if (textToFind.Any(text => line.Contains(text)))
+                if (textToFind.Any(text => text != null && line.IndexOf(text, comparison) >= 0))
                     return true;
             }
 

@@ -86,6 +86,22 @@ namespace IcedAstroGrep.Tests
 			Assert.Contains(name, embedded);
 		}
 
+		[Fact]
+		public void TheEmbeddedPdfToolCanBeReadBackByThePlugin()
+		{
+			// the plug-in extracts these bytes to a temporary file at run time, so a name that resolves
+			// is not enough: this calls the loader and checks that a real executable comes back
+			var method = typeof(PDFPlugin).GetMethod("ReadEmbeddedPdfToText", BindingFlags.NonPublic | BindingFlags.Static);
+
+			Assert.NotNull(method);
+
+			byte[] contents = (byte[])method.Invoke(null, null);
+
+			Assert.True(contents.Length > 100000, "the embedded pdftotext.exe looks truncated: " + contents.Length + " bytes");
+			Assert.Equal(0x4D, contents[0]);
+			Assert.Equal(0x5A, contents[1]);
+		}
+
 		[Theory]
 		[InlineData(0, 0, 0, 255)]
 		[InlineData(255, 255, 255, 255)]

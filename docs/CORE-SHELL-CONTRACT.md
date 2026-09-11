@@ -177,14 +177,14 @@ Ordered by impact on the WinUI 3 shell.
 dotnet test IcedAstroGrep.slnx
 ```
 
-76 tests: 52 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
+77 tests: 52 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
 minimum hit count, exclusions, subfolder recursion, regex timeout, `AbortAndWait`, encoding cache
-consistency and concurrency, `FilterItem` round trips, plug-in contract) and 24 in
+consistency and concurrency, `FilterItem` round trips, plug-in contract) and 25 in
 `IcedAstroGrep.App.Tests` (settings atomicity, back-up recovery, write probe, real iFilter
 end-to-end, legacy code pages, window caption version and commit, and the shell boundary: no UI
 framework in `IcedAstroGrep.AppServices`, the exporter templates embedded where the exporters look
 for them, the language files still embedded in the shell, the `pdftotext` resource name matching the
-code, and the HTML colour equivalence above).
+code and reading back as an executable, and the HTML colour equivalence above).
 
 CI runs the same commands on `windows-latest` (`.github/workflows/ci.yml`). Note that the iFilter
 integration test reports and skips itself when no filter is registered for `.txt`, so it is not

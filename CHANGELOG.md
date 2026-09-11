@@ -26,6 +26,8 @@
 - **新发现：Excel 插件在 .NET 10 上完全不可用**：`ExcelDataReader` 的配置构造函数会解析回退代码页 1252，而 .NET Core 默认不注册旧代码页，于是每个 .xls/.xlsx 都抛 `NotSupportedException`。新增 `LegacyEncodingSupport.EnsureRegistered()`（注册 `CodePagesEncodingProvider`，在应用启动与 Excel 插件内各调用一次）并引入 `System.Text.Encoding.CodePages` 包。这同时修好了编码检测路径中 `Encoding.GetEncoding(codePage)` 对旧代码页的失败。
 - **新发现：Word 插件在没有 styles 部件的文档上 `NullReferenceException`**：`StyleDefinitionsPart` 为 null 时直接解引用。已改为空安全（无样式部件是合法文档）。
 - **新发现（评审更正）**：评审 §5-1 将多节点 `dotnet build` 失败归因于 SDK 缺文件有误，实为沙箱 ACL 受限令牌禁止命名管道；关闭沙箱后同一条命令 `Build succeeded`。`dotnet test` 同理（vstest 测试宿主需要 `OpenProcess` 父进程权限），关闭沙箱后 26 个测试全部通过。
+- **P2-9 设置写入非原子、读取失败即丢弃全部配置**：`SettingsIO.Save` 改为先把完整文档写入同目录的 `.tmp` 并 `Flush(true)` 落盘，再原子替换目标文件；被替换的旧文件保留为 `.bak`。`Load` 在主文件读取失败（崩溃或断电留下的截断文件）时回退到 `.bak` 并记录警告——原先一次解析失败等于全部设置回到默认值。单条属性应用失败也从 `Console.WriteLine` 改为写日志。
+- **P2-8 便携目录不可写时设置静默不保存**：新增 `ApplicationPaths.IsDirectoryWritable`；`Program.Main` 在语言加载后探测程序目录，不可写则记录错误并弹出明确提示（含目录路径与系统错误信息），而不是让之后每一次保存都默默失败。新增 `ApplicationFolderNotWritable` 语言键（en-us）。**刻意不做**回退到 `%APPDATA%`：便携工具的承诺就是数据在程序旁边，静默写到别处比明确告知更糟。
 
 ### 测试
 
@@ -36,6 +38,7 @@
 - 新增 `EncodingCacheTests`：`RemoveItem` 同时移除字典项、移除后可重新加入、淘汰与字典内容保持一致、4 线程并发不抛异常。
 - 新增 `PluginContractTests`：插件失败但置 `IsFileSkipped` 时**既上报错误又回退到默认搜索**；插件声称已处理文件时会压制默认搜索（说明插件为何必须正确置位）。
 - 测试关闭 xUnit 并行执行：`Grep` 与 `EncodingCache` 持有进程级状态，正则超时用例还测时钟。测试总数 26 → **46**。
+- 新增 App 侧测试项目 `tests/IcedAstroGrep.App.Tests`（此前测试只能覆盖 Core），并加入 `SettingsIoTests`：往返、不残留 `.tmp`、保留 `.bak`、主文件损坏时从备份恢复、文件缺失或版本不符返回 false、自动创建目录。另有 `ApplicationPathsTests`（Core 侧）覆盖可写探测的可写目录、路径是文件、空路径三种情形。测试总数 46 → **56**。
 - 新增 `.github/workflows/ci.yml`：在 `windows-latest` 上 restore / build / test（Release）。此树目标为 `net10.0-windows` 并用到 WinForms 与 WPF，因此只能跑 Windows runner；沙箱环境所需的 `-m:1 -nodeReuse:false` 在 CI 中并不需要。
 
 ### 已知问题

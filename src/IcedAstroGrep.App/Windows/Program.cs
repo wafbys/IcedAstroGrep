@@ -100,6 +100,21 @@ namespace IcedAstroGrep.Windows
 			Legacy.ConvertLanguageValue();
 			Language.Load(IcedAstroGrep.GeneralSettings.Language);
 
+			// The portable layout writes settings, logs and the encoding cache beside the executable.
+			// That fails outright under Program Files or on read-only media, and every later write
+			// would fail silently, so say so once here instead.
+			string folderError;
+			if (!IcedAstroGrep.Core.ApplicationPaths.IsDirectoryWritable(IcedAstroGrep.Core.ApplicationPaths.DataFolder, out folderError))
+			{
+				LogClient.Instance.Logger.Error("The application folder {0} is not writable: {1}", IcedAstroGrep.Core.ApplicationPaths.DataFolder, folderError);
+
+				MessageBox.Show(
+					string.Format(Language.GetGenericText("ApplicationFolderNotWritable",
+						"The folder this copy runs from cannot be written to, so settings, logs and the encoding cache will not be saved:\n\n{0}\n\n{1}\n\nMove the application to a writable folder to keep your settings."),
+						IcedAstroGrep.Core.ApplicationPaths.DataFolder, folderError),
+					ProductInformation.ApplicationName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+			}
+
 			if (args.AnyArguments && args.DisplayHelp)
 			{
 				LogClient.Instance.Logger.Info("Displaying command line help window.");

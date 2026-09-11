@@ -5,6 +5,7 @@
     <Project Path="src/IcedAstroGrep.IFilter/IcedAstroGrep.IFilter.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/IcedAstroGrep.App.Tests/IcedAstroGrep.App.Tests.csproj" />
     <Project Path="tests/IcedAstroGrep.Core.Tests/IcedAstroGrep.Core.Tests.csproj" />
   </Folder>
 </Solution>

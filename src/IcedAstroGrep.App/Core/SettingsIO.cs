@@ -37,6 +37,12 @@ namespace IcedAstroGrep
    /// </history>
 	public sealed class SettingsIO
 	{
+		/// <summary>Suffix of the file a settings document is written to before it is swapped in.</summary>
+		private const string TempSuffix = ".tmp";
+
+		/// <summary>Suffix of the previous good document, kept so a damaged file can be recovered.</summary>
+		private const string BackupSuffix = ".bak";
+
 		private SettingsIO() {}
 
       /// <summary>
@@ -52,6 +58,43 @@ namespace IcedAstroGrep
       /// </history>
       public static bool Load(object classRecord, string path, string version)
       {
+         Exception failure;
+         if (TryLoad(classRecord, path, version, out failure))
+         {
+            return true;
+         }
+
+         // A settings file can be left unreadable by a crash or a power loss. Save keeps the previous
+         // good document beside it, and falling back to that beats discarding every setting: the old
+         // behaviour logged the parse error and started from defaults.
+         string backupPath = path + BackupSuffix;
+         Exception backupFailure;
+         if (File.Exists(backupPath) && TryLoad(classRecord, backupPath, version, out backupFailure))
+         {
+            LogClient.Instance.Logger.Warn("Settings at {0} could not be loaded ({1}); recovered from {2}.", path, failure == null ? "missing" : failure.Message, backupPath);
+            return true;
+         }
+
+         if (failure != null)
+         {
+            LogClient.Instance.Logger.Error("Unable to load settings at {0}, version {1}, message {2}", path, version, failure.Message);
+         }
+
+         return false;
+      }
+
+      /// <summary>
+      /// Loads a settings document, reporting any failure instead of swallowing it.
+      /// </summary>
+      /// <param name="classRecord">Class to fill</param>
+      /// <param name="path">File path</param>
+      /// <param name="version">Version of class</param>
+      /// <param name="failure">The exception that stopped the load, or null when the file was simply absent</param>
+      /// <returns>true when the file was read and matched the expected version</returns>
+      private static bool TryLoad(object classRecord, string path, string version, out Exception failure)
+      {
+         failure = null;
+
          try
          {
             Type recordType = classRecord.GetType();
@@ -105,7 +148,7 @@ namespace IcedAstroGrep
                               }
                               catch (Exception ex)
                               {
-                                 Console.WriteLine(ex.ToString());
+                                 LogClient.Instance.Logger.Warn("Unable to apply the setting '{0}' from {1}: {2}", name, path, ex.Message);
                               }
 
                               break;
@@ -120,7 +163,7 @@ namespace IcedAstroGrep
          }
          catch (Exception ex)
          {
-            LogClient.Instance.Logger.Error("Unable to load settings at {0}, version {1}, message {2}", path, version, ex.Message);
+            failure = ex;
          }
 
          return false;
@@ -140,6 +183,8 @@ namespace IcedAstroGrep
       /// </history>
       public static bool Save(object classRecord, string path, string version)
       {
+         string tempPath = path + TempSuffix;
+
          try
          {
             Type recordType = classRecord.GetType();
@@ -186,7 +231,16 @@ namespace IcedAstroGrep
             if (!info.Directory.Exists)
                info.Directory.Create();
 
-            xmlDoc.Save(path);
+            // Write the complete document to a sibling file and only then swap it in. Writing
+            // straight over the settings file meant a crash or power loss could leave a truncated
+            // document behind, which the next start would then discard entirely.
+            using (FileStream stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+               xmlDoc.Save(stream);
+               stream.Flush(true);
+            }
+
+            SwapIn(tempPath, path);
 
             // cleanup
             recordType = null;
@@ -197,10 +251,55 @@ namespace IcedAstroGrep
          }
          catch (Exception ex)
          {
+            TryDelete(tempPath);
             LogClient.Instance.Logger.Error("Unable to save settings at {0}, version {1}, message {2}", path, version, ex.Message);
          }
 
          return false;
+      }
+
+      /// <summary>
+      /// Moves a completely written document over the settings file, keeping the replaced document
+      /// as a backup.
+      /// </summary>
+      /// <param name="tempPath">Fully written replacement</param>
+      /// <param name="path">Settings file to replace</param>
+      private static void SwapIn(string tempPath, string path)
+      {
+         if (!File.Exists(path))
+         {
+            File.Move(tempPath, path);
+            return;
+         }
+
+         try
+         {
+            File.Replace(tempPath, path, path + BackupSuffix, ignoreMetadataErrors: true);
+         }
+         catch (Exception)
+         {
+            // File.Replace needs both files on one volume and a filesystem that supports it; a plain
+            // overwrite is still atomic enough, because the replacement is already complete
+            File.Move(tempPath, path, overwrite: true);
+         }
+      }
+
+      /// <summary>
+      /// Deletes the given file, ignoring any failure.
+      /// </summary>
+      /// <param name="path">File to delete</param>
+      private static void TryDelete(string path)
+      {
+         try
+         {
+            if (File.Exists(path))
+            {
+               File.Delete(path);
+            }
+         }
+         catch (Exception)
+         {
+         }
       }
 
       /// <summary>

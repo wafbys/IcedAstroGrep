@@ -266,6 +266,7 @@
       <text name="VerifyErrorGeneric" value="Unable to validate specified parameters.  Please verify they are valid."/>
       <text name="VerifyErrorFileHitCount" value="The minimum file count must be greater than or equal to {0}."/>
       <text name="VerifyErrorNoResultsToSearchIn" value="There are no results to search in, please deselect 'Search in results' to perform a new search."/>
+      <text name="ApplicationFolderNotWritable" value="The folder this copy runs from cannot be written to, so settings, logs and the encoding cache will not be saved:{0}{1}{0}{2}{0}{0}Move the application to a writable folder to keep your settings."/>
 
       <text name="SearchGenericError" value="An error occurred searching."/>
       <text name="SearchFileError" value="An error occurred searching file: {0}."/>

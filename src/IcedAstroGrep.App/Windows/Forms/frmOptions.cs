@@ -53,7 +53,7 @@ namespace IcedAstroGrep.Windows.Forms
 			public int Value { get; set; }
 		}
 
-		private Font __FileFont = Convertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
+		private Font __FileFont = UiConvertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
 		private bool __LanguageChange = false;
 		private bool inhibitFileEncodingAutoCheck;
 
@@ -349,10 +349,10 @@ namespace IcedAstroGrep.Windows.Forms
 			GeneralSettings.ResultsForeColor = Convertors.ConvertColorToString(btnResultsWindowForeColor.SelectedColor);
 			GeneralSettings.ResultsBackColor = Convertors.ConvertColorToString(btnResultsWindowBackColor.SelectedColor);
 			GeneralSettings.ResultsContextForeColor = Convertors.ConvertColorToString(btnResultsContextForeColor.SelectedColor);
-			GeneralSettings.ResultsFont = Convertors.ConvertFontToString(rtxtResultsPreview.Font);
+			GeneralSettings.ResultsFont = UiConvertors.ConvertFontToString(rtxtResultsPreview.Font);
 			GeneralSettings.ShowExclusionErrorMessage = chkShowExclusionErrorMessage.Checked;
 			GeneralSettings.SaveSearchOptionsOnExit = chkSaveSearchOptions.Checked;
-			GeneralSettings.FilePanelFont = Convertors.ConvertFontToString(__FileFont);
+			GeneralSettings.FilePanelFont = UiConvertors.ConvertFontToString(__FileFont);
 			GeneralSettings.DetectFileEncoding = chkDetectFileEncoding.Checked;
 			GeneralSettings.EncodingPerformance = (int)cboPerformance.SelectedValue;
 			GeneralSettings.UseEncodingCache = chkUseEncodingCache.Checked;
@@ -437,7 +437,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void cboForceEncoding_DropDown(object sender, EventArgs e)
 		{
-			cboForceEncoding.DropDownWidth = Convertors.CalculateDropDownWidth(cboForceEncoding);
+			cboForceEncoding.DropDownWidth = UiConvertors.CalculateDropDownWidth(cboForceEncoding);
 		}
 
 		/// <summary>
@@ -530,7 +530,7 @@ namespace IcedAstroGrep.Windows.Forms
 			btnResultsContextForeColor.SelectedColor = Convertors.ConvertStringToColor(GeneralSettings.ResultsContextForeColor);
 
 			// results font
-			rtxtResultsPreview.Font = Convertors.ConvertStringToFont(GeneralSettings.ResultsFont);
+			rtxtResultsPreview.Font = UiConvertors.ConvertStringToFont(GeneralSettings.ResultsFont);
 			DisplayFont(rtxtResultsPreview.Font, lblCurrentFont);
 
 			// file list font

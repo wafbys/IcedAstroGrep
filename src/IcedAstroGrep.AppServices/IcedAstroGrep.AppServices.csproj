@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>IcedAstroGrep.AppServices</RootNamespace>
+    <AssemblyName>IcedAstroGrep.AppServices</AssemblyName>
+    <!--
+      Deliberately NO UseWindowsForms / UseWPF, for the same reason IcedAstroGrep.Core has none: this
+      assembly is the shell-agnostic half of the application (settings, built-in plug-ins and result
+      exporters), and a WinUI 3 shell has to be able to reference it without dragging WinForms or WPF
+      into the process. The WinForms parts that used to sit in App/Core (Convertors' UI members, the
+      theme, desktop shortcuts, the text editor message boxes) moved to IcedAstroGrep.App instead; see
+      docs/CORE-SHELL-CONTRACT.md.
+
+      The namespaces of the moved files were left alone (IcedAstroGrep, IcedAstroGrep.Plugins.*,
+      IcedAstroGrep.Output), so no call site had to change namespace with them.
+    -->
+    <Description>Shell-agnostic application services for IcedAstroGrep: settings, built-in plug-ins and result exporters.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelNumberFormat" Version="1.1.0" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\IcedAstroGrep.Core\IcedAstroGrep.Core.csproj" />
+    <ProjectReference Include="..\IcedAstroGrep.IFilter\IcedAstroGrep.IFilter.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!--
+      Templates the exporters embed and then read back by name: HTMLHelper.GetContents composes the
+      resource name as "<executing assembly>.Output.<file>", so moving the files here moved the
+      resources with them and the lookup still resolves.
+    -->
+    <EmbeddedResource Include="Output\Output.html" />
+    <EmbeddedResource Include="Output\Output.css" />
+    <EmbeddedResource Include="Output\Output-fileNameOnly.html" />
+    <!--
+      pdftotext.exe is redistributed inside the PDF plug-in, and its licence requires the Xpdf
+      documentation to be distributed together with it; the App project copies that documentation
+      beside the executable (third-party/xpdf). The plug-in extracts these bytes to a temporary file
+      at run time, so the binary is embedded here rather than expected on disk.
+    -->
+    <EmbeddedResource Include="Resources\pdftotext.exe" />
+  </ItemGroup>
+</Project>

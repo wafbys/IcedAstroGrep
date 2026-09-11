@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -351,13 +351,20 @@ namespace IcedAstroGrep.Plugins.PDF
 		/// <history>
 		/// [Curtis_Beard]      09/09/2019	ADD: PDF plugin
 		/// </history>
+		/// <summary>
+		/// Logical name of the pdftotext.exe embedded in this assembly: RootNamespace + folder + file,
+		/// so it has to stay in step with the csproj, where the binary is a plain EmbeddedResource
+		/// rather than an entry in the shell's Resources.resx.
+		/// </summary>
+		private const string PdfToTextResourceName = "IcedAstroGrep.AppServices.Resources.pdftotext.exe";
+
 		private void ExtractPDFToTxtApp()
 		{
 			pdfToTxtAppPath = string.Empty;
 
 			try
 			{
-				byte[] contents = IcedAstroGrep.Properties.Resources.pdftotext;
+				byte[] contents = ReadEmbeddedPdfToText();
 				string targetPath = Path.Combine(GetPDFFolder(), "pdftotext.exe");
 
 				if (!IsExtractedAppUpToDate(targetPath, contents))
@@ -370,6 +377,29 @@ namespace IcedAstroGrep.Plugins.PDF
 			catch (Exception ex)
 			{
 				IcedAstroGrep.Core.Logging.LogClient.Instance.Logger.Error("Unable to extract the pdftotext utility, the PDF plugin is unavailable: {0}", IcedAstroGrep.Core.Logging.LogClient.GetAllExceptions(ex));
+			}
+		}
+
+		/// <summary>
+		/// Reads the embedded pdftotext utility.
+		/// </summary>
+		/// <returns>Contents of the embedded utility</returns>
+		/// <exception cref="InvalidOperationException">The embedded resource is missing or unreadable.</exception>
+		private static byte[] ReadEmbeddedPdfToText()
+		{
+			using (Stream stream = typeof(PDFPlugin).Assembly.GetManifestResourceStream(PdfToTextResourceName))
+			{
+				if (stream == null)
+				{
+					throw new InvalidOperationException(string.Format("The embedded {0} resource is missing from {1}.", PdfToTextResourceName, typeof(PDFPlugin).Assembly.GetName().Name));
+				}
+
+				using (var contents = new MemoryStream())
+				{
+					stream.CopyTo(contents);
+
+					return contents.ToArray();
+				}
 			}
 		}
 

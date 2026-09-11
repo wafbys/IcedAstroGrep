@@ -11,23 +11,24 @@
     <EnableDefaultEmbeddedResourceItems>true</EnableDefaultEmbeddedResourceItems>
   </PropertyGroup>
   <ItemGroup>
+    <!--
+      Only what this shell itself uses: AvalonEdit for the results viewer, CommandLineParser for
+      Windows/CLOptions.cs. The plug-ins' packages (DocumentFormat.OpenXml, ExcelDataReader,
+      ExcelNumberFormat, TagLibSharp) belong to IcedAstroGrep.AppServices, which owns the plug-ins, and
+      NLog belongs to IcedAstroGrep.Core, which owns LogClient; both reach this executable through the
+      project reference.
+    -->
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
-    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
-    <PackageReference Include="ExcelNumberFormat" Version="1.1.0" />
-    <PackageReference Include="NLog" Version="5.4.0" />
-    <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup>
+    <!-- IcedAstroGrep.IFilter arrives with AppServices, which is the only thing that uses it. -->
+    <ProjectReference Include="..\IcedAstroGrep.AppServices\IcedAstroGrep.AppServices.csproj" />
     <ProjectReference Include="..\IcedAstroGrep.Core\IcedAstroGrep.Core.csproj" />
-    <ProjectReference Include="..\IcedAstroGrep.IFilter\IcedAstroGrep.IFilter.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The language files stay with Language.cs, which resolves them against its own assembly. -->
     <EmbeddedResource Include="Language\*.xml" />
-    <EmbeddedResource Include="Output\Output.html" />
-    <EmbeddedResource Include="Output\Output.css" />
-    <EmbeddedResource Include="Output\Output-fileNameOnly.html" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Images\AstroGrep_256x256.png">
@@ -36,8 +37,9 @@
   </ItemGroup>
   <ItemGroup>
     <!--
-      pdftotext.exe is redistributed inside this assembly, and its licence requires the Xpdf
-      documentation to be distributed together with it, so both files ship beside the application.
+      pdftotext.exe is redistributed inside IcedAstroGrep.AppServices (the PDF plug-in embeds it and
+      extracts it at run time), and its licence requires the Xpdf documentation to be distributed
+      together with it, so both files ship beside the application.
     -->
     <None Include="..\..\third-party\xpdf\*" LinkBase="ThirdParty\xpdf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

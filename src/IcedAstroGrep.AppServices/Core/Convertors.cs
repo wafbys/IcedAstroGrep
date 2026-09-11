@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Text;
-using System.Windows.Forms;
 
 using IcedAstroGrep.Core;
 
@@ -39,50 +34,6 @@ namespace IcedAstroGrep
 	public static class Convertors
 	{
 		/// <summary>
-		/// Calculates the width of the drop down list of the given combo box
-		/// </summary>
-		/// <param name="combo">Combo box to base calculate from</param>
-		/// <param name="maxWidth">The maximum width of the drop down (defaults to 600)</param>
-		/// <returns>Width of longest string in combo box items</returns>
-		/// <history>
-		/// [Curtis_Beard]    11/21/2005	Created
-		/// [Curtis_Beard]    09/16/2019	CHG: rework to have a max and support extended combobox
-		/// [Curtis_Beard]    03/05/2020	CHG: add maxWidth parameter to be able to override
-		/// </history>
-		public static int CalculateDropDownWidth(ComboBox combo, int maxWidth = 600)
-		{
-			maxWidth += SystemInformation.VerticalScrollBarWidth;
-			int defaultWidth = combo.Width + SystemInformation.VerticalScrollBarWidth;
-			int calculatedWidth = defaultWidth;
-			bool isComboBoxEx = combo is IcedAstroGrep.Windows.Controls.ComboBoxEx;
-
-			using (Graphics g = combo.CreateGraphics())
-			{
-				string _itemValue = string.Empty;
-				SizeF _size;
-
-				foreach (object _item in combo.Items)
-				{
-					_itemValue = _item.ToString();
-					if (isComboBoxEx)
-					{
-						_itemValue = (_item as IcedAstroGrep.Windows.ComboBoxExEntry).Display;
-					}
-
-					_size = g.MeasureString(_itemValue, combo.Font);
-
-					if (_size.Width > calculatedWidth)
-						calculatedWidth = Convert.ToInt32(_size.Width);
-				}
-
-				// keep original width if no item longer
-				if (calculatedWidth != defaultWidth)
-					calculatedWidth += SystemInformation.VerticalScrollBarWidth;
-			}
-
-			return Math.Min(calculatedWidth, maxWidth);
-		}
-
 		/// <summary>
 		/// Converts a Color to a string.
 		/// </summary>
@@ -94,6 +45,24 @@ namespace IcedAstroGrep
 		public static string ConvertColorToString(System.Drawing.Color color)
 		{
 			return string.Format("{0}{4}{1}{4}{2}{4}{3}", color.R.ToString(), color.G.ToString(), color.B.ToString(), color.A.ToString(), Constants.COLOR_SEPARATOR);
+		}
+
+		/// <summary>
+		/// Converts a colour setting value into the text an HTML/CSS style attribute accepts.
+		/// </summary>
+		/// <param name="colorSettingValue">colour values as a string</param>
+		/// <returns>colour as #RRGGBB</returns>
+		/// <remarks>
+		/// Replaces System.Drawing.ColorTranslator.ToHtml, which lives in System.Drawing.Common. Every
+		/// colour ConvertStringToColor can produce comes from Color.FromArgb, so it is never a KnownColor
+		/// and ToHtml would have returned exactly the #RRGGBB text this produces; keeping the conversion
+		/// here is what lets this shell-agnostic assembly depend on System.Drawing.Primitives alone.
+		/// </remarks>
+		public static string ConvertColorSettingToHtml(string colorSettingValue)
+		{
+			System.Drawing.Color color = ConvertStringToColor(colorSettingValue);
+
+			return string.Format(System.Globalization.CultureInfo.InvariantCulture, "#{0:X2}{1:X2}{2:X2}", color.R, color.G, color.B);
 		}
 
 		/// <summary>
@@ -173,20 +142,6 @@ namespace IcedAstroGrep
 		}
 
 		/// <summary>
-		/// Converts a font to a string.
-		/// </summary>
-		/// <param name="font">Font</param>
-		/// <returns>font values as a string</returns>
-		/// <history>
-		/// [Curtis_Beard]	   02/24/2012	CHG: 3488321, ability to change results font
-		/// [Curtis_Beard]		10/22/2012	FIX: 36, use invariant culture to always have same float decimal separator
-		/// </history>
-		public static string ConvertFontToString(System.Drawing.Font font)
-		{
-			return string.Format("{0}{3}{1}{3}{2}", font.Name, font.Size.ToString(System.Globalization.CultureInfo.InvariantCulture), font.Style.ToString(), Constants.FONT_SEPARATOR);
-		}
-
-		/// <summary>
 		/// Converts a string to a Color.
 		/// </summary>
 		/// <param name="color">color values as a string</param>
@@ -199,57 +154,6 @@ namespace IcedAstroGrep
 			string[] rgba = color.Split(char.Parse(Constants.COLOR_SEPARATOR));
 
 			return System.Drawing.Color.FromArgb(byte.Parse(rgba[3]), byte.Parse(rgba[0]), byte.Parse(rgba[1]), byte.Parse(rgba[2]));
-		}
-
-		/// <summary>
-		/// Converts a string to a Font.
-		/// </summary>
-		/// <param name="font">font values as a string</param>
-		/// <returns>Font</returns>
-		/// <history>
-		/// [Curtis_Beard]	   02/24/2012	CHG: 3488321, ability to change results font
-		/// [Curtis_Beard]		10/22/2012	FIX: 36, use invariant culture to always have same float decimal separator
-		/// </history>
-		public static System.Drawing.Font ConvertStringToFont(string font)
-		{
-			string[] fontValues = Utils.SplitByString(font, Constants.FONT_SEPARATOR);
-
-			return new System.Drawing.Font(fontValues[0], float.Parse(fontValues[1], System.Globalization.CultureInfo.InvariantCulture), (System.Drawing.FontStyle)Enum.Parse(typeof(System.Drawing.FontStyle), fontValues[2], true), System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-		}
-
-		/// <summary>
-		/// Converts a string to a SolidColorBrush.
-		/// </summary>
-		/// <param name="color">color values as a string</param>
-		/// <returns>System.Windows.Media.SolidColorBrush</returns>
-		/// <history>
-		/// [Curtis_Beard]		04/15/2015	Created
-		/// </history>
-		public static System.Windows.Media.SolidColorBrush ConvertStringToSolidColorBrush(string color)
-		{
-			System.Drawing.Color dColor = ConvertStringToColor(color);
-
-			return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(dColor.R, dColor.G, dColor.B));
-		}
-
-		/// <summary>
-		/// Retrieves all the ComboBox entries as a string.
-		/// </summary>
-		/// <param name="combo">ComboBox</param>
-		/// <returns>string of entries</returns>
-		/// <history>
-		/// [Curtis_Beard]		11/03/2006	Created
-		/// </history>
-		public static string GetComboBoxEntriesAsString(System.Windows.Forms.ComboBox combo)
-		{
-			string[] entries = new string[combo.Items.Count];
-
-			for (int i = 0; i < combo.Items.Count; i++)
-			{
-				entries[i] = combo.Items[i].ToString();
-			}
-
-			return string.Join(Constants.SEARCH_ENTRIES_SEPARATOR, entries);
 		}
 
 		/// <summary>
@@ -311,50 +215,5 @@ namespace IcedAstroGrep
 			return int.Parse(text);
 		}
 
-		/// <summary>
-		/// Invoke action delegate on main thread if required.
-		/// </summary>
-		/// <param name="obj">Object to check for InvokeRequired</param>
-		/// <param name="action">Action delegate to perform (either on the current thread or invoked).</param>
-		/// <remarks>
-		/// Extension for any object that supports the ISynchronizeInvoke interface (such as WinForms
-		/// controls). This will handle the InvokeRequired check and call the action delegate from
-		/// the appropriate thread.
-		/// </remarks>
-		/// <example>
-		/// <code>
-		/// <![CDATA[
-		/// private void DB_OfflineModeChanged(object sender, Lib.DB.OfflineModeEventArgs e)
-		/// {
-		/// // This code could be ran from a background thread
-		/// this.InvokeIfRequired(() =>
-		/// {
-		/// // Code to run after invoking if required
-		/// OfflineStatusLabel.Visible = e.OfflineMode;
-		/// });
-		/// }
-		/// ]]>
-		/// </code>
-		/// </example>
-		/// <history>
-		/// [Curtis_Beard]		03/05/2020	CHG: use async BeginInvoke for performance
-		/// [Curtis_Beard]		05/18/2020	CHG: switch back to Invoke due to UI update issues
-		/// </history>
-		public static void InvokeIfRequired(this ISynchronizeInvoke obj, System.Windows.Forms.MethodInvoker action)
-		{
-			if (obj.InvokeRequired)
-			{
-				var args = new object[0];
-				try
-				{
-					obj.Invoke(action, args);
-				}
-				catch { }
-			}
-			else
-			{
-				action();
-			}
-		}
 	}
 }

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/IcedAstroGrep.App/IcedAstroGrep.App.csproj" />
+    <Project Path="src/IcedAstroGrep.AppServices/IcedAstroGrep.AppServices.csproj" />
     <Project Path="src/IcedAstroGrep.Core/IcedAstroGrep.Core.csproj" />
     <Project Path="src/IcedAstroGrep.IFilter/IcedAstroGrep.IFilter.csproj" />
   </Folder>

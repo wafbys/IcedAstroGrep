@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 
 using IcedAstroGrep;
 using IcedAstroGrep.Core.Logging;
@@ -118,10 +117,10 @@ namespace IcedAstroGrep.Output
       /// </history>
       public static string ReplaceCssHolders(string css)
       {
-         css = css.Replace("%%resultback%%", System.Drawing.ColorTranslator.ToHtml(Convertors.ConvertStringToColor(IcedAstroGrep.GeneralSettings.ResultsBackColor)));
-         css = css.Replace("%%resultfore%%", System.Drawing.ColorTranslator.ToHtml(Convertors.ConvertStringToColor(IcedAstroGrep.GeneralSettings.ResultsForeColor)));
-         css = css.Replace("%%highlightfore%%", System.Drawing.ColorTranslator.ToHtml(Convertors.ConvertStringToColor(IcedAstroGrep.GeneralSettings.HighlightForeColor)));
-         css = css.Replace("%%highlightback%%", System.Drawing.ColorTranslator.ToHtml(Convertors.ConvertStringToColor(IcedAstroGrep.GeneralSettings.HighlightBackColor)));
+         css = css.Replace("%%resultback%%", Convertors.ConvertColorSettingToHtml(IcedAstroGrep.GeneralSettings.ResultsBackColor));
+         css = css.Replace("%%resultfore%%", Convertors.ConvertColorSettingToHtml(IcedAstroGrep.GeneralSettings.ResultsForeColor));
+         css = css.Replace("%%highlightfore%%", Convertors.ConvertColorSettingToHtml(IcedAstroGrep.GeneralSettings.HighlightForeColor));
+         css = css.Replace("%%highlightback%%", Convertors.ConvertColorSettingToHtml(IcedAstroGrep.GeneralSettings.HighlightBackColor));
 
          return css;
       }

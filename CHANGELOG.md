@@ -13,10 +13,17 @@
 - **构建期注入提交哈希**：新增 `Directory.Build.targets`，对仓库内每个程序集写入 `AssemblyMetadata("GitHash", <短哈希>)`。哈希取自 `git rev-parse --short=7`，即 GitHub 与 GitHub Desktop 显示的 7 位形式。没有 git 或不在仓库中（例如源码导出）时退化为 `unknown`，不会让构建失败；生成的中间文件只在哈希变化时重写，因此不会破坏增量构建。**注意**：它标记的是构建所基于的提交——在工作区有未提交改动时构建，显示的仍是上一个提交；未加 `-dirty` 标记，因为那会让每次提交/开始编辑都触发一次全量重编译。
 - `ProductInformation` 新增 `ApplicationCommit`（读取入口程序集的提交哈希）与 `ApplicationVersionText`（`1.1.0 (4e264cc)` 形式），并由 `ReadCommit(Assembly)` 承载可测试的读取逻辑。第二个壳只要在本仓库内构建就会自动获得该标记。
 
+### 变更
+
+- **壳无关代码抽取为独立程序集 `IcedAstroGrep.AppServices`**：设置持久化、内置插件、结果导出与通知接缝从 WinForms 程序集移出，共 28 个文件 / 8,849 行；`IcedAstroGrep.App` 只留 WinForms 壳（`Windows/**`，60 个文件 / 23,821 行）。新程序集与引擎一样**不设** `UseWindowsForms` / `UseWPF`，其 `deps.json` 的运行时目标是 `.NETCoreApp,Version=v10.0`；新增 `ShellBoundaryTests` 直接断言它不引用 `System.Windows.Forms` / `PresentationFramework` / `PresentationCore` / `WindowsBase` / `System.Drawing.Common`，并断言 WinForms 壳确实引用 WinForms（否则该断言是空转的）。文件移动全部用 `git mv`，命名空间保持 `IcedAstroGrep` / `IcedAstroGrep.Plugins.*` / `IcedAstroGrep.Output` 不变，因此没有调用点因为搬家而改名。
+- **`IUserNotifier`：引擎向壳发消息的接缝**：`TextEditors.Open` 原先自己 `MessageBox.Show` 并读取壳的语言资源，现在由壳传入 `IUserNotifier` —— 引擎只传语言键与格式化参数，文案与对话框归壳；传 `null` 则只记日志。WinForms 壳的实现是 `WinFormsNotifier.Instance`，弹出的标题、图标与文案与改造前逐字一致。
+- **资源随其使用者一起搬走**：`pdftotext.exe` 与 PDF 插件同处 `IcedAstroGrep.AppServices`，并改为普通 `EmbeddedResource`（不再借用壳的 `Resources.resx` 与 `ResXFileRef`，相应清理了 `Resources.resx` / `Resources.Designer.cs` 中的条目）；`Output.html` / `Output.css` / `Output-fileNameOnly.html` 随导出器移动 —— `HTMLHelper.GetContents` 按"当前程序集名 + `.Output.` + 文件名"拼资源名，因此自动跟随。两者都有测试守护（模板能读出、`pdftotext` 资源名与代码常量一致）。
+- **壳专属代码明确留在壳内**：`Theme/`（WinForms 渲染）、`UiConvertors`（`Font` / `SolidColorBrush` / `ComboBox` / 下拉宽度计算）、`ControlInvokeExtensions.InvokeIfRequired`、`Shortcuts`（`API.ShellLink` + `Application.ExecutablePath`）与 `Language`（会遍历 `MainMenu`/`MenuItem`）。唯一触及可见行为的改动是导出 HTML 的颜色转换：`System.Drawing.ColorTranslator.ToHtml`（System.Drawing.Common）改为在壳无关程序集内格式化为 `#RRGGBB`；因 `ConvertStringToColor` 产出的颜色一律来自 `Color.FromArgb`（永不命中已知颜色/系统颜色分支），`ToHtml` 本来就只走 `#RRGGBB` 分支，输出逐字节不变 —— `ShellBoundaryTests` 用 7 组取值锁定该等价性。
+
 ### 计划中
 
-- 新增 WinUI 3 宿主壳，与现有 WinForms 壳共用同一个引擎。引擎与壳的边界、当前耦合点以及动手前应先做的决定见 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md)。
-- 其中优先级最高的一项：把当前混在 WinForms 程序集里的壳无关代码（设置持久化、插件实现、结果导出、语言资源，约 9,200 行）抽成独立程序集，否则第二个壳只能重写或复制。
+- 新增 WinUI 3 宿主壳，与现有 WinForms 壳共用同一个引擎与 `IcedAstroGrep.AppServices`。引擎与壳的边界、当前耦合点以及动手前应先做的决定见 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md)。
+- 抽取已完成（见上），第二个壳现在只需引用 `IcedAstroGrep.Core` 与 `IcedAstroGrep.AppServices`，不要再引用 `IcedAstroGrep.App`。
 - 另需先决定数据目录策略：`ApplicationPaths.DataFolder` 取可执行文件所在目录，MSIX 打包的 WinUI 应用无法写入该位置。
 
 ## [1.1.0] - 2026-09-11

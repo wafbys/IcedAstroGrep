@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -496,7 +496,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void cboFileName_DropDown(object sender, EventArgs e)
 		{
-			cboFileName.DropDownWidth = Convertors.CalculateDropDownWidth(cboFileName, 300);
+			cboFileName.DropDownWidth = UiConvertors.CalculateDropDownWidth(cboFileName, 300);
 		}
 
 		/// <summary>
@@ -560,7 +560,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void cboFilePath_DropDown(object sender, EventArgs e)
 		{
-			cboFilePath.DropDownWidth = Convertors.CalculateDropDownWidth(cboFilePath);
+			cboFilePath.DropDownWidth = UiConvertors.CalculateDropDownWidth(cboFilePath);
 		}
 
 		/// <summary>
@@ -573,7 +573,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void cboSearchForText_DropDown(object sender, EventArgs e)
 		{
-			cboSearchForText.DropDownWidth = Convertors.CalculateDropDownWidth(cboSearchForText);
+			cboSearchForText.DropDownWidth = UiConvertors.CalculateDropDownWidth(cboSearchForText);
 		}
 
 		/// <summary>
@@ -1898,7 +1898,7 @@ namespace IcedAstroGrep.Windows.Forms
 			ResultsViewShowCharactersButton.Checked = ShowCharactersMenuItem.Checked = GeneralSettings.ShowEditorCharacters;
 
 			// File list columns
-			lstFileNames.Font = Convertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
+			lstFileNames.Font = UiConvertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
 			SetColumnsText();
 
 			// Load the window settings
@@ -1925,10 +1925,10 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void LoadTextEditorSettings()
 		{
-			var foreground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsForeColor);
-			var background = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsBackColor);
-			var contextForeground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
-			var font = Convertors.ConvertStringToFont(GeneralSettings.ResultsFont);
+			var foreground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsForeColor);
+			var background = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsBackColor);
+			var contextForeground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
+			var font = UiConvertors.ConvertStringToFont(GeneralSettings.ResultsFont);
 
 			txtHits.Foreground = foreground;
 			txtHits.Background = background;
@@ -2370,7 +2370,7 @@ namespace IcedAstroGrep.Windows.Forms
 					return;
 
 				var match = __Grep.RetrieveMatchResult(int.Parse(lstFileNames.SelectedItems[0].SubItems[Constants.COLUMN_INDEX_GREP_INDEX].Text));
-				TextEditors.Open(TextEditorOpener.FromMatch(match, __Grep.SearchSpec.SearchText));
+				TextEditors.Open(TextEditorOpener.FromMatch(match, __Grep.SearchSpec.SearchText), WinFormsNotifier.Instance);
 			}
 		}
 
@@ -2463,7 +2463,7 @@ namespace IcedAstroGrep.Windows.Forms
 			var opener = GetEditorAtLocation(txtHits.GetPositionFromRightClickPoint());
 			if (opener.HasValue())
 			{
-				TextEditors.Open(opener);
+				TextEditors.Open(opener, WinFormsNotifier.Instance);
 			}
 		}
 
@@ -2528,7 +2528,7 @@ namespace IcedAstroGrep.Windows.Forms
 			for (int i = 0; i < lstFileNames.SelectedItems.Count; i++)
 			{
 				var match = __Grep.RetrieveMatchResult(int.Parse(lstFileNames.SelectedItems[i].SubItems[Constants.COLUMN_INDEX_GREP_INDEX].Text));
-				TextEditors.Open(TextEditorOpener.FromMatch(match, __Grep.SearchSpec.SearchText));
+				TextEditors.Open(TextEditorOpener.FromMatch(match, __Grep.SearchSpec.SearchText), WinFormsNotifier.Instance);
 			}
 		}
 
@@ -2615,7 +2615,7 @@ namespace IcedAstroGrep.Windows.Forms
 				// this will also reload any language changes if needed
 				fileFilterHelper.AdjustUserValueMax(cboFileName, GeneralSettings.MaximumMRUPaths);
 
-				lstFileNames.Font = Convertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
+				lstFileNames.Font = UiConvertors.ConvertStringToFont(GeneralSettings.FilePanelFont);
 
 				// reload the text editor settings
 				LoadTextEditorSettings();
@@ -2755,7 +2755,7 @@ namespace IcedAstroGrep.Windows.Forms
 					ContextLinesAfter = Convert.ToInt32(ResultsContextLinesAfterCombo.SelectedItem)
 				};
 
-				using (var printForm = new frmPrint(settings, Convertors.ConvertStringToFont(GeneralSettings.ResultsFont), Icon))
+				using (var printForm = new frmPrint(settings, UiConvertors.ConvertStringToFont(GeneralSettings.ResultsFont), Icon))
 				{
 					printForm.ShowDialog(this);
 				}
@@ -2793,9 +2793,9 @@ namespace IcedAstroGrep.Windows.Forms
 					else if (txtHits.TextArea.TextView.LineTransformers[i] is AllResultHighlighter)
 						txtHits.TextArea.TextView.LineTransformers.RemoveAt(i);
 				}
-				var foreground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightForeColor);
-				var background = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightBackColor);
-				var nonForeground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
+				var foreground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightForeColor);
+				var background = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightBackColor);
+				var nonForeground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
 				txtHits.TextArea.TextView.LineTransformers.Add(new AllResultHighlighter(__Grep.MatchResults, RemoveWhiteSpaceMenuItem.Checked, beforeContextLines, afterContextLines)
 				{
 					MatchForeground = foreground,
@@ -3415,9 +3415,9 @@ namespace IcedAstroGrep.Windows.Forms
 				else if (txtHits.TextArea.TextView.LineTransformers[i] is AllResultHighlighter)
 					txtHits.TextArea.TextView.LineTransformers.RemoveAt(i);
 			}
-			var foreground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightForeColor);
-			var background = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightBackColor);
-			var nonForeground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
+			var foreground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightForeColor);
+			var background = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightBackColor);
+			var nonForeground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
 			txtHits.TextArea.TextView.LineTransformers.Add(new ResultHighlighter(match, RemoveWhiteSpaceMenuItem.Checked, beforeContextLines, afterContextLines, true)
 			{
 				MatchForeground = foreground,
@@ -3525,9 +3525,9 @@ namespace IcedAstroGrep.Windows.Forms
 				else if (txtHits.TextArea.TextView.LineTransformers[i] is AllResultHighlighter)
 					txtHits.TextArea.TextView.LineTransformers.RemoveAt(i);
 			}
-			var foreground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightForeColor);
-			var background = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightBackColor);
-			var nonForeground = Convertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
+			var foreground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightForeColor);
+			var background = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.HighlightBackColor);
+			var nonForeground = UiConvertors.ConvertStringToSolidColorBrush(GeneralSettings.ResultsContextForeColor);
 			txtHits.TextArea.TextView.LineTransformers.Add(new ResultHighlighter(match, RemoveWhiteSpaceMenuItem.Checked, beforeContextLines, afterContextLines)
 			{
 				MatchForeground = foreground,
@@ -4274,10 +4274,10 @@ namespace IcedAstroGrep.Windows.Forms
 			GeneralSettings.WindowFilePanelHeight = lstFileNames.Height;
 
 			//save search comboboxes
-			GeneralSettings.SearchStarts = Convertors.GetComboBoxEntriesAsString(cboFilePath);
+			GeneralSettings.SearchStarts = UiConvertors.GetComboBoxEntriesAsString(cboFilePath);
 			GeneralSettings.SearchFilters = fileFilterHelper.GetUserValuesAsString(cboFileName);
 			GeneralSettings.SearchFiltersIndex = cboFileName.SelectedIndex;
-			GeneralSettings.SearchTexts = Convertors.GetComboBoxEntriesAsString(cboSearchForText);
+			GeneralSettings.SearchTexts = UiConvertors.GetComboBoxEntriesAsString(cboSearchForText);
 
 			//save view options
 			GeneralSettings.ResultsWordWrap = WordWrapMenuItem.Checked;
@@ -4861,7 +4861,7 @@ namespace IcedAstroGrep.Windows.Forms
 				if (opener.HasValue())
 				{
 					e.Handled = true;
-					TextEditors.Open(opener);
+					TextEditors.Open(opener, WinFormsNotifier.Instance);
 				}
 			}
 		}

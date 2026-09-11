@@ -1,11 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Forms;
 
 using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.Logging;
-using IcedAstroGrep.Windows;
 
 namespace IcedAstroGrep
 {
@@ -45,6 +43,7 @@ namespace IcedAstroGrep
       /// Open a file with a user defined text editor/executable.
       /// </summary>
       /// <param name="opener">TextEditorOpener object containing the information necessary to edit a file.</param>
+      /// <param name="notifier">How to tell the user that the editor could not be started; null logs only.</param>
       /// <history>
       /// [Theodore_Ward]     ??/??/????  Initial
       /// [Curtis_Beard]	   01/11/2005	.Net Conversion, Try/Catch
@@ -59,7 +58,7 @@ namespace IcedAstroGrep
       /// [Curtis_Beard]	   01/31/2019	FIX: 113, pass search text to method
       /// [Curtis_Beard]      09/04/2019  FIX: 111, Open File from search results fails for some menu selections (add more logging information)
       /// </history>
-      public static void Open(TextEditorOpener opener)
+      public static void Open(TextEditorOpener opener, IUserNotifier notifier)
       {
          if (opener != null && opener.HasValue())
          {
@@ -140,7 +139,7 @@ namespace IcedAstroGrep
                         opener.ColumnNumber += ((count * editorToUse.TabSize) - count);
                      }
 
-                     LaunchEditor(editorToUse, opener.Path, opener.LineNumber, opener.ColumnNumber, opener.SearchText);
+                     LaunchEditor(editorToUse, opener.Path, opener.LineNumber, opener.ColumnNumber, opener.SearchText, notifier);
                   }
                }
             }
@@ -148,8 +147,7 @@ namespace IcedAstroGrep
             {
                LogClient.Instance.Logger.Error("Unable to open text editor {0} for file {1} at line {2}, column {3}, with text {4}, search text {5}, and message {6}", editorToUse != null ?  editorToUse.Editor : "N/A", opener.Path, opener.LineNumber, opener.ColumnNumber, opener.LineText, opener.SearchText, ex.Message);
 
-               MessageBox.Show(String.Format(Language.GetGenericText("TextEditorsErrorGeneric"), opener.Path, ex.Message),
-                     ProductInformation.ApplicationName, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+               Notify(notifier, "TextEditorsErrorGeneric", NotificationSeverity.Warning, opener.Path, ex.Message);
             }
          }
       }
@@ -261,6 +259,7 @@ namespace IcedAstroGrep
       /// <param name="line">Line number</param>
       /// <param name="column">Column position</param>
       /// <param name="searchText">Current search text</param>
+      /// <param name="notifier">How to tell the user that the editor could not be started; null logs only.</param>
       /// <history>
       /// [Curtis_Beard]	   07/10/2006	ADD: Initial
       /// [Curtis_Beard]	   07/26/2006	ADD: 1512026, column position
@@ -270,7 +269,7 @@ namespace IcedAstroGrep
       /// [Curtis_Beard]	   08/20/2015	CHG: 80, make check for empty editor to use default app the first check.
       /// [Curtis_Beard]	   08/16/2016	CHG: 108, PAT: 3, add search text, rename from OpenEditor to LaunchEditor
       /// </history>
-      private static void LaunchEditor(TextEditor textEditor, string path, int line, int column, string searchText)
+      private static void LaunchEditor(TextEditor textEditor, string path, int line, int column, string searchText, IUserNotifier notifier)
       {
          try
          {
@@ -281,8 +280,7 @@ namespace IcedAstroGrep
             else if (textEditor.Arguments.IndexOf("%1") == -1)
             {
                // no file argument specified
-               MessageBox.Show(Language.GetGenericText("TextEditorsErrorNoCmdLineForFile"),
-                  ProductInformation.ApplicationName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+               Notify(notifier, "TextEditorsErrorNoCmdLineForFile", NotificationSeverity.Information);
             }
             else
             {
@@ -308,8 +306,22 @@ namespace IcedAstroGrep
          {
             LogClient.Instance.Logger.Error("Unable to open text editor for editor {0}, file {1} at line {2}, column {3}, search text {4}, with message {5}", textEditor.ToString(), path, line, column, searchText, ex.Message);
 
-            MessageBox.Show(String.Format(Language.GetGenericText("TextEditorsErrorGeneric"), path, ex.Message),
-               ProductInformation.ApplicationName, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            Notify(notifier, "TextEditorsErrorGeneric", NotificationSeverity.Warning, path, ex.Message);
+         }
+      }
+
+      /// <summary>
+      /// Shows a message through the shell's notifier, when the shell supplied one.
+      /// </summary>
+      /// <param name="notifier">Notifier supplied by the shell, can be null</param>
+      /// <param name="languageKey">Key of the generic text to show</param>
+      /// <param name="severity">How much attention the message deserves</param>
+      /// <param name="formatArguments">Arguments for the text's placeholders</param>
+      private static void Notify(IUserNotifier notifier, string languageKey, NotificationSeverity severity, params object[] formatArguments)
+      {
+         if (notifier != null)
+         {
+            notifier.Notify(languageKey, formatArguments, severity);
          }
       }
 

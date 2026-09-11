@@ -30,15 +30,21 @@
 ### 测试
 
 - 新增 `tests/IcedAstroGrep.Core.Tests/FilterItemTests.cs`：覆盖排除项序列化的往返（含 `|`、`<`、反斜杠、UNC 路径、空值、大小显示选项）、旧格式配置的兼容解析、排除项日志详情的拆分。
+- 新增 `GrepSearchTests`：否定匹配、上下文行（含未请求时不输出）、仅文件名、最低命中数过滤、扩展名 / 文件名 / 目录排除、子目录递归开关。
+- 新增 `GrepRegexTimeoutTests`：`BuildSearchRegEx` 带超时、灾难性回溯模式在同步路径抛 `SearchRegexTimeoutException`、异步路径经 `SearchError` 上报并收敛。
+- 新增 `GrepAbortTests`：`AbortAndWait` 在无搜索时返回 true，并确实中止运行中的搜索、join 其线程。
+- 新增 `EncodingCacheTests`：`RemoveItem` 同时移除字典项、移除后可重新加入、淘汰与字典内容保持一致、4 线程并发不抛异常。
+- 新增 `PluginContractTests`：插件失败但置 `IsFileSkipped` 时**既上报错误又回退到默认搜索**；插件声称已处理文件时会压制默认搜索（说明插件为何必须正确置位）。
+- 测试关闭 xUnit 并行执行：`Grep` 与 `EncodingCache` 持有进程级状态，正则超时用例还测时钟。测试总数 26 → **46**。
+- 新增 `.github/workflows/ci.yml`：在 `windows-latest` 上 restore / build / test（Release）。此树目标为 `net10.0-windows` 并用到 WinForms 与 WPF，因此只能跑 Windows runner；沙箱环境所需的 `-m:1 -nodeReuse:false` 在 CI 中并不需要。
 
 ### 已知问题
 
-- 评审记录中尚未处理的 P1/P2 项：`FilterLoader` 的 IStream 释放与 HRESULT 检查、`Job.cs` 的资源泄漏、`VT_BLOB`/`VT_BSTR` 的畸形文档 AV 路径、插件把整份文档读入内存、`SettingsIO` 非原子写入等。
+- 评审记录中尚未处理的 P1/P2 项：`FilterLoader` 的 IStream 释放与 HRESULT 检查、`Job.cs` 的资源泄漏、`VT_BLOB`/`VT_BSTR` 的畸形文档 AV 路径、`SettingsIO` 非原子写入、便携目录不可写等。
 
 ### 计划中
 
-- 补充测试覆盖：否定匹配、上下文行、仅文件名、命中数过滤、排除项、编码检测与缓存、插件路径、命令行导出。
-- 持续集成（GitHub Actions）构建与测试流水线。
+- 继续补充测试覆盖：编码检测本身、命令行导出、以及 App 层插件（Excel / Word / PDF）的提取行为（这些需要 App 侧的测试项目）。
 
 ## [1.0.0] - 2026-09-10
 

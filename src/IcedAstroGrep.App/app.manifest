@@ -16,10 +16,10 @@
       <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}" />
     </application>
   </compatibility>
-  <application xmlns="urn:schemas-microsoft-com:asm.v3">
-    <windowsSettings>
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
-    </windowsSettings>
-  </application>
+  <!--
+    High DPI awareness is deliberately NOT declared here. It is set by the first statement of
+    Program.Main via Application.SetHighDpiMode(HighDpiMode.PerMonitorV2), which must run before any
+    window handle exists; declaring it in the manifest as well would make the manifest win and leave
+    two disagreeing sources of truth (WFO0003).
+  -->
 </assembly>

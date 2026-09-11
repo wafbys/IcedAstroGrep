@@ -295,7 +295,7 @@ public PDFPlugin()
 | 10 | 已修复 | 删除 `Legacy.cs`（612 行）与 `Registry.cs`（355 行）及其 5 个调用点，应用不再读写 / 删除 HKCU（iFilter 只读 HKLM 的查找保留）。`EncodingTools` 移除 7 个无引用成员（其中 `ReadTextFile` 本身还是坏的）、`AutoItEncodingDetector.GetBomLengthFromEncodingMode`、`CharsetProber.SetOption` 一并移除；**未**对 vendored 目录做逐成员审计（`PreferedEncodingsForStream` 只写不读，牵动静态构造逻辑，未动）。`tools/import-upstream.ps1` 参数化。`pdftotext` 许可补齐：核实为 Xpdf **4.01.01**，新增 `third-party/xpdf/`（许可说明 + 从二进制抓取的帮助文本）并随构建复制，README 提示发布时不得删除。 |
 
 > 修复过程中**新发现**的三个缺陷（原评审未提及，均已修复）：
-> 1. **Excel 插件在本分支上完全不可用**——`ExcelDataReader` 的配置构造函数解析回退代码页 1252，而 .NET Core 默认不注册旧代码页，每个 .xls/.xlsx 都抛 `NotSupportedException`。新增 `LegacyEncodingSupport.EnsureRegistered()`（注册 `CodePagesEncodingProvider`）+ `System.Text.Encoding.CodePages` 包；这同时修好了编码检测里 `Encoding.GetEncoding(codePage)` 对旧代码页的失败。
+> 1. **Excel 插件在本分支上完全不可用**——`ExcelDataReader` 的配置构造函数解析回退代码页 1252，而 .NET Core 默认不注册旧代码页，每个 .xls/.xlsx 都抛 `NotSupportedException`。新增 `LegacyEncodingSupport.EnsureRegistered()`（注册 `CodePagesEncodingProvider`）；该 provider 由 WindowsDesktop 框架提供，无需显式包引用（显式引用会触发 NU1510），已由 `LegacyEncodingSupportTests` 断言守住。这同时修好了编码检测里 `Encoding.GetEncoding(codePage)` 对旧代码页的失败。
 > 2. **Word 插件在无 styles 部件的文档上 NRE**（`StyleDefinitionsPart` 直接解引用），已改为空安全。
 > 3. **`FilterSearcher.FileContainsText`（P1-4）之外**：`dotnet test` 与多节点 `dotnet build` 在沙箱下的失败均源于 ACL 受限令牌（进程句柄 / 命名管道），关闭沙箱后分别通过 `26/26` 与 `Build succeeded`——见 §5 的复核更正。
 

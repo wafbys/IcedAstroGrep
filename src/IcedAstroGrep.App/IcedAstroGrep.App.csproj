@@ -17,7 +17,6 @@
     <PackageReference Include="ExcelDataReader" Version="3.7.0" />
     <PackageReference Include="ExcelNumberFormat" Version="1.1.0" />
     <PackageReference Include="NLog" Version="5.4.0" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.12" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup>

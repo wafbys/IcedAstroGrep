@@ -14,7 +14,6 @@ using IcedAstroGrep;
 using IcedAstroGrep.Theme;
 using IcedAstroGrep.Output;
 using IcedAstroGrep.Windows.Controls;
-using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.EncodingDetection;
 
 namespace IcedAstroGrep.Windows.Forms
@@ -4856,10 +4855,7 @@ namespace IcedAstroGrep.Windows.Forms
 			{
 				ICSharpCode.AvalonEdit.TextViewPosition? position = null;
 				var mousePos = e.GetPosition(txtHits);
-				if (mousePos != null)
-				{
-					position = txtHits.GetPositionFromPoint(mousePos);
-				}
+				position = txtHits.GetPositionFromPoint(mousePos);
 
 				var opener = GetEditorAtLocation(position);
 				if (opener.HasValue())

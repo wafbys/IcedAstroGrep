@@ -4,6 +4,15 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 
+// This control keeps its legacy ContextMenu path: SplitMenu is wired into the mouse handling and the
+// show logic alongside SplitMenuStrip, so it is behaviour, not leftover code. WFDEV006 asks for
+// ContextMenuStrip, and dropping the legacy half would change how the button behaves -- a UI change to
+// make deliberately, with the control on screen, rather than to silence a warning.
+// CS0672 follows from the same decision: the ContextMenu override cannot be marked [Obsolete] on its
+// own without claiming the whole control is obsolete, and it must stay public because WinForms'
+// designer and property grid bind through it.
+#pragma warning disable WFDEV006, CS0672
+
 namespace IcedAstroGrep.Windows.Controls
 {
    /// <summary>

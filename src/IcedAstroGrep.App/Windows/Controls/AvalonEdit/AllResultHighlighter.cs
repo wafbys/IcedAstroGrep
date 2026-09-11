@@ -4,7 +4,6 @@ using System.Linq;
 using System.Windows.Media;
 
 using IcedAstroGrep.Core;
-using IcedAstroGrep.Core;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Rendering;
 

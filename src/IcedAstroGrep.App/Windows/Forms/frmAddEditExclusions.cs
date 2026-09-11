@@ -9,7 +9,6 @@ using System.Windows.Forms;
 
 using IcedAstroGrep.Core;
 using IcedAstroGrep.Windows.Controls;
-using IcedAstroGrep.Core;
 
 namespace IcedAstroGrep.Windows.Forms
 {

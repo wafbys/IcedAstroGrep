@@ -6,7 +6,6 @@ using System.Text;
 using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.EncodingDetection;
 
-using IcedAstroGrep.Core;
 using System.Xml.Serialization;
 using System.IO;
 

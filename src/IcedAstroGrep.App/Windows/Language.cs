@@ -8,6 +8,12 @@ using System.Xml;
 using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.Logging;
 
+// This file deliberately supports both menu kinds: the WinForms shell still builds its menus from the
+// legacy MainMenu / MenuItem API, and the localizer also has to handle a MainMenuStrip (see the
+// frm.MainMenuStrip branch below). WFDEV006 only asks for the modern API, and migrating the shell's
+// menus to MenuStrip is a UI change that belongs with modernizing the shell, not with localization.
+#pragma warning disable WFDEV006
+
 namespace IcedAstroGrep.Windows
 {
 	/// <summary>

@@ -8,7 +8,6 @@ using System.Text;
 using System.Windows.Forms;
 
 using IcedAstroGrep.Core;
-using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.EncodingDetection;
 
 namespace IcedAstroGrep.Windows.Forms

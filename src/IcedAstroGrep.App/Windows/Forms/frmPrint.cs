@@ -7,7 +7,6 @@ using System.Windows.Forms;
 using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.Logging;
 using IcedAstroGrep.Output;
-using IcedAstroGrep.Core;
 
 namespace IcedAstroGrep.Windows.Forms
 {

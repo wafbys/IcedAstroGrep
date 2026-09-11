@@ -52,6 +52,7 @@ A WinUI 3 host can therefore reference Core without dragging WinForms or WPF int
 | Events | `SearchingFile`, `FileHit`, `LineHit`, `FileFiltered`, `DirectoryFiltered`, `FileEncodingDetected`, `SearchingFileByPlugin`, `SearchComplete`, `SearchCancel`, `SearchError`. |
 | `Grep.BuildSearchRegEx(spec)` | The shared regex construction, including the 2-second match timeout. |
 | `Grep.RetrieveLineMatches`, `Grep.WholeWordOnly` | Shared matching helpers so shells highlight exactly what the engine matched. |
+| `ProductInformation.ApplicationVersionText` | `1.1.0 (57903c9300c4)` — version plus the commit the build came from. Show it in the shell's caption so a running copy can be identified. |
 | `SearchRegexTimeoutException` | Thrown when a pattern exceeds the timeout; the search is aborted. Surface it, never swallow it. |
 
 
@@ -125,6 +126,11 @@ Ordered by impact on the WinUI 3 shell.
       that quietly returns nothing is the worst failure mode this engine has.
 - [ ] Keep the portability promise honest: either data really lives beside the executable, or the
       shell says where it lives.
+- [ ] Show the build identity. The build stamps `AssemblyMetadataAttribute("GitHash", <commit>)` into
+      every assembly in this repository (`Directory.Build.targets`), and
+      `ProductInformation.ApplicationVersionText` reads it from the entry assembly — so a new shell
+      gets the right value for free as long as the build goes through this repository. The WinForms
+      shell puts it in the window caption, the About dialog and the start/stop log lines.
 
 
 ## 8. Verification available today

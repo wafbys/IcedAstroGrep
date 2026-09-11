@@ -1,0 +1,45 @@
+<Project>
+
+  <!--
+    Stamps every assembly built from this repository with the commit it came from, so a running copy
+    can tell you which build it is (the shell shows it in the window caption).
+
+    git is not required: a source export without a repository, or a machine without git, simply gets
+    "unknown" instead of a build failure. The generated file is only rewritten when the hash actually
+    changes, so an incremental build is not forced to recompile just because this target ran.
+  -->
+  <Target Name="GenerateGitRevisionAttribute" BeforeTargets="BeforeCompile;CoreCompile">
+
+    <Exec Command="git rev-parse --short=12 HEAD"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitRevisionOutput" />
+    </Exec>
+
+    <PropertyGroup>
+      <_GitRevision Condition="'$(_GitRevisionOutput)' != ''">$(_GitRevisionOutput.Trim())</_GitRevision>
+      <_GitRevision Condition="'$(_GitRevision)' == ''">unknown</_GitRevision>
+      <_GitRevisionFile>$(IntermediateOutputPath)GitRevision.g.cs</_GitRevisionFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_GitRevisionLine Include="// &lt;auto-generated&gt; the commit this build came from &lt;/auto-generated&gt;" />
+      <_GitRevisionLine Include="[assembly: System.Reflection.AssemblyMetadataAttribute(&quot;GitHash&quot;, &quot;$(_GitRevision)&quot;)]" />
+    </ItemGroup>
+
+    <WriteLinesToFile File="$(_GitRevisionFile)"
+                      Lines="@(_GitRevisionLine)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+
+    <ItemGroup>
+      <Compile Include="$(_GitRevisionFile)" />
+      <FileWrites Include="$(_GitRevisionFile)" />
+    </ItemGroup>
+
+  </Target>
+
+</Project>

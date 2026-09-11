@@ -92,7 +92,7 @@ namespace IcedAstroGrep.Windows
 			// needs to go after command line processing since StoreDataLocal determines log file location
 			LogClient.Instance.Logger.Info("### STARTING {0}, version {1}{2} ###",
 			   ProductInformation.ApplicationName,
-			   ProductInformation.ApplicationVersion.ToString(3),
+			   ProductInformation.ApplicationVersionText,
 			   ProductInformation.IsPortable ? " (Portable)" : string.Empty);
 
 			LogClient.Instance.Logger.Info("Operating System: {0}", Environment.OSVersion.VersionString);

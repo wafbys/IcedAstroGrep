@@ -107,7 +107,7 @@ namespace IcedAstroGrep.Windows.Forms
 
 			CopyrightLabel.Text = string.Format(CopyrightLabel.Text, DateTime.Now.Year.ToString());
 			lblProductName.Text = ProductInformation.ApplicationName;
-			lblProductVersion.Text = string.Format("{0}{1}", ProductInformation.ApplicationVersion.ToString(3), ProductInformation.IsPortable ? " (Portable)" : string.Empty);
+			lblProductVersion.Text = string.Format("{0}{1}", ProductInformation.ApplicationVersionText, ProductInformation.IsPortable ? " (Portable)" : string.Empty);
 		}
 
 		/// <summary>

@@ -1193,7 +1193,7 @@ namespace IcedAstroGrep.Windows.Forms
 
 			LogClient.Instance.Logger.Info("### STOPPING {0}, version {1}{2} ###",
 			   ProductInformation.ApplicationName,
-			   ProductInformation.ApplicationVersion.ToString(3),
+			   ProductInformation.ApplicationVersionText,
 			   ProductInformation.IsPortable ? " (Portable)" : string.Empty);
 
 			Application.Exit();
@@ -1274,6 +1274,10 @@ namespace IcedAstroGrep.Windows.Forms
 			// Fonts
 			MainMenu.Font = Font;
 			stbStatus.Font = Font;
+
+			// show the version and the commit this build came from in the caption, after the language
+			// file has had its say about the form title
+			SetWindowText();
 
 			ReloadTheme();
 		}
@@ -4585,7 +4589,8 @@ namespace IcedAstroGrep.Windows.Forms
 		}
 
 		/// <summary>
-		/// Sets the form's text to include the first entry of the search path's
+		/// Sets the window caption to the current search path plus the product name, version and the
+		/// commit this build came from, so a running copy can be identified at a glance.
 		/// </summary>
 		/// <history>
 		/// [Curtis_Beard]	   09/18/2013	CHG: 64/53, add search path to window title
@@ -4594,10 +4599,14 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void SetWindowText()
 		{
+			string caption = string.Format("{0} {1}", ProductInformation.ApplicationName, ProductInformation.ApplicationVersionText);
+
 			if (cboFilePath.Items.Count > 0)
 			{
-				Text = string.Format("{0} - {1}", cboFilePath.Items[0].ToString(), ProductInformation.ApplicationName);
+				caption = string.Format("{0} - {1}", cboFilePath.Items[0].ToString(), caption);
 			}
+
+			Text = caption;
 		}
 
 		/// <summary>

@@ -38,6 +38,20 @@ namespace IcedAstroGrep.Core
 		private const char LIST_DELIMETER = '<';
 
 		/// <summary>
+		/// Marks an item written by <see cref="ToString"/> using the escaping rules below.
+		/// Items without this prefix are parsed with the legacy rules (no unescaping) so settings
+		/// written before escaping existed keep loading unchanged. That distinction matters: legacy
+		/// values may legitimately contain backslashes (UNC paths, regular expressions) which must
+		/// not be interpreted as escape sequences.
+		/// </summary>
+		private const string ESCAPED_ITEM_PREFIX = "~v2~";
+
+		/// <summary>
+		/// Escapes <see cref="DELIMETER"/>, <see cref="LIST_DELIMETER"/> and itself inside a field.
+		/// </summary>
+		private const char ESCAPE_CHAR = '\\';
+
+		/// <summary>
 		/// Creates an instance of this class.
 		/// </summary>
 		/// <history>
@@ -177,7 +191,11 @@ namespace IcedAstroGrep.Core
 
 			if (!string.IsNullOrEmpty(value))
 			{
-				var values = value.Split(LIST_DELIMETER);
+				// a list is always written in a single format, so the format of the first item decides
+				// how the list separator has to be interpreted. Legacy lists keep splitting on every
+				// '<' exactly as before.
+				bool escaped = value.StartsWith(ESCAPED_ITEM_PREFIX, StringComparison.Ordinal);
+				var values = escaped ? SplitEscaped(value, LIST_DELIMETER) : value.Split(LIST_DELIMETER);
 
 				foreach (string val in values)
 				{
@@ -198,7 +216,23 @@ namespace IcedAstroGrep.Core
 		/// </history>
 		public static FilterItem FromString(string value)
 		{
-			string[] values = value.Split(DELIMETER);
+			string[] values;
+
+			if (value != null && value.StartsWith(ESCAPED_ITEM_PREFIX, StringComparison.Ordinal))
+			{
+				// current format: separators inside a field are escaped
+				values = SplitEscaped(value.Substring(ESCAPED_ITEM_PREFIX.Length), DELIMETER);
+
+				for (int i = 0; i < values.Length; i++)
+				{
+					values[i] = UnescapeField(values[i]);
+				}
+			}
+			else
+			{
+				// legacy format, parsed exactly as before
+				values = value.Split(DELIMETER);
+			}
 
 			var item = new FilterItem();
 			item.FilterType = FilterType.FromString(values[0]);
@@ -209,6 +243,121 @@ namespace IcedAstroGrep.Core
 			item.Enabled = Convert.ToBoolean(values[5]);
 
 			return item;
+		}
+
+		/// <summary>
+		/// Determines whether the given character is escaped by <see cref="ESCAPE_CHAR"/>.
+		/// </summary>
+		/// <param name="value">Character to check</param>
+		/// <returns>true if a preceding escape character applies to it</returns>
+		private static bool IsEscapable(char value)
+		{
+			return value == ESCAPE_CHAR || value == DELIMETER || value == LIST_DELIMETER;
+		}
+
+		/// <summary>
+		/// Escapes the separators used by <see cref="ToString"/> so a filter value may contain them.
+		/// </summary>
+		/// <param name="value">Field value</param>
+		/// <returns>Escaped field value</returns>
+		private static string EscapeField(string value)
+		{
+			if (string.IsNullOrEmpty(value))
+			{
+				return value;
+			}
+
+			if (value.IndexOf(ESCAPE_CHAR) < 0 && value.IndexOf(DELIMETER) < 0 && value.IndexOf(LIST_DELIMETER) < 0)
+			{
+				// nothing to escape, keep the stored form identical to the legacy one
+				return value;
+			}
+
+			var builder = new StringBuilder(value.Length + 8);
+			foreach (char c in value)
+			{
+				if (IsEscapable(c))
+				{
+					builder.Append(ESCAPE_CHAR);
+				}
+
+				builder.Append(c);
+			}
+
+			return builder.ToString();
+		}
+
+		/// <summary>
+		/// Reverses <see cref="EscapeField"/>.
+		/// </summary>
+		/// <param name="value">Escaped field value</param>
+		/// <returns>Original field value</returns>
+		private static string UnescapeField(string value)
+		{
+			if (string.IsNullOrEmpty(value) || value.IndexOf(ESCAPE_CHAR) < 0)
+			{
+				return value;
+			}
+
+			var builder = new StringBuilder(value.Length);
+			for (int i = 0; i < value.Length; i++)
+			{
+				char c = value[i];
+
+				// only the separators (and the escape character itself) are escapable, so a legacy
+				// looking sequence such as "C:\temp" is never mangled
+				if (c == ESCAPE_CHAR && i + 1 < value.Length && IsEscapable(value[i + 1]))
+				{
+					i++;
+					builder.Append(value[i]);
+				}
+				else
+				{
+					builder.Append(c);
+				}
+			}
+
+			return builder.ToString();
+		}
+
+		/// <summary>
+		/// Splits the given value on the given separator, ignoring escaped separators.
+		/// Escape sequences are preserved in the returned parts so <see cref="UnescapeField"/> can
+		/// decode them once the parts are known.
+		/// </summary>
+		/// <param name="value">Value to split</param>
+		/// <param name="delimiter">Separator to split on</param>
+		/// <returns>The separated parts</returns>
+		private static string[] SplitEscaped(string value, char delimiter)
+		{
+			var parts = new List<string>();
+			var builder = new StringBuilder();
+
+			for (int i = 0; i < value.Length; i++)
+			{
+				char c = value[i];
+
+				if (c == ESCAPE_CHAR && i + 1 < value.Length && IsEscapable(value[i + 1]))
+				{
+					builder.Append(c);
+					i++;
+					builder.Append(value[i]);
+					continue;
+				}
+
+				if (c == delimiter)
+				{
+					parts.Add(builder.ToString());
+					builder.Length = 0;
+					continue;
+				}
+
+				builder.Append(c);
+			}
+
+			parts.Add(builder.ToString());
+
+			return parts.ToArray();
 		}
 
 		/// <summary>
@@ -401,6 +550,8 @@ namespace IcedAstroGrep.Core
 
 		/// <summary>
 		/// Outputs this object to a string using the delimeter.
+		/// Values containing the field or list separator are escaped, so a filter value such as a
+		/// regular expression or a path fragment can contain them without corrupting the stored form.
 		/// </summary>
 		/// <returns>string representation of this object</returns>
 		/// <history>
@@ -408,7 +559,17 @@ namespace IcedAstroGrep.Core
 		/// </history>
 		public override string ToString()
 		{
-			return string.Format("{1}{0}{2}{0}{3}{0}{4}{0}{5}{0}{6}", DELIMETER, FilterType.ToString(), Value, ValueOption.ToString(), ValueIgnoreCase.ToString(), ValueSizeOption, Enabled);
+			var fields = new string[]
+			{
+				EscapeField(FilterType.ToString()),
+				EscapeField(Value),
+				ValueOption.ToString(),
+				ValueIgnoreCase.ToString(),
+				EscapeField(ValueSizeOption),
+				Enabled.ToString()
+			};
+
+			return ESCAPED_ITEM_PREFIX + string.Join(DELIMETER.ToString(), fields);
 		}
 
 		/// <summary>

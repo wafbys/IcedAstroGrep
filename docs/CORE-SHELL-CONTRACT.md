@@ -183,25 +183,46 @@ Ordered by impact on the WinUI 3 shell.
 
 ## 7. Hand-off checklist for a new shell
 
-- [ ] Reference `IcedAstroGrep.Core` and `IcedAstroGrep.AppServices` — never the WinForms assembly
-      `IcedAstroGrep.WinForms`.
-- [ ] Implement `ISearchSpec` (non-null `EncodingDetectionOptions`).
-- [ ] Run the search off the UI thread and marshal all ten events.
-- [ ] Wire cancellation to `Abort()` / `AbortAndWait()`, and never start a search over a running one.
+The worked example is the WinUI 3 spike in `spikes/winui-shell/` (deliberately outside
+`IcedAstroGrep.slnx`, so the main build keeps its 0 warnings without restoring the Windows App SDK).
+A ticked box below means the spike **built and ran on a real machine and that behaviour was observed**
+(2026-09-12); a few items are written to the contract but their code path has not been exercised yet,
+and those say so instead of being ticked.
+
+- [x] Reference `IcedAstroGrep.Core` and `IcedAstroGrep.AppServices` — never the WinForms assembly
+      `IcedAstroGrep.WinForms`. (The spike proves a `net10.0-windows10.0.19041.0` project can reference
+      these `net10.0-windows` libraries.)
+- [x] Implement `ISearchSpec` (non-null `EncodingDetectionOptions`). The spike reuses `SearchSpec` as
+      it is, which is the point — the disk format comes along for free.
+- [x] Run the search off the UI thread and marshal all ten events. (Observed: the file list and the
+      status line fill in while the window stays responsive.)
+- [x] Wire cancellation to `Abort()` / `AbortAndWait()`, and never start a search over a running one.
+      (Observed: Cancel stops the search. The spike also unbinds the ten handlers before `AbortAndWait`,
+      which is why a second search cannot be fed by the first one's stragglers.)
 - [ ] Implement `IUserNotifier` (a language key and format arguments in, your wording and dialog out),
-      or pass null to `TextEditors.Open` and keep only the log entry.
-- [ ] Reuse `SettingsIO` so settings are byte-compatible with the WinForms shell.
-- [ ] Reuse `PluginManager` and the built-in plug-ins.
+      or pass null to `TextEditors.Open` and keep only the log entry. **Written** (`WinUiNotifier`, a
+      `ContentDialog`) and wired to the one message worth a dialog — a regex timeout — but that path
+      has not been triggered on a real machine yet.
+- [ ] Reuse `SettingsIO` so settings are byte-compatible with the WinForms shell. **Written**: the spike
+      reads and writes the shared settings file, so the two shells see each other's options; not yet
+      checked by switching shells on a real machine.
+- [x] Reuse `PluginManager` and the built-in plug-ins. (Observed: the plug-in count, including the
+      embedded `pdftotext` and the plug-in settings file, resolves in the WinUI process.)
 - [ ] Reuse `FilterItem.ConvertFilterItemsToString` / `ConvertStringToFilterItems` for exclusions.
+      Not used by the spike yet — exclusion editing is M3b.
 - [ ] Surface `SearchRegexTimeoutException` and plug-in errors instead of swallowing them — a search
-      that quietly returns nothing is the worst failure mode this engine has.
+      that quietly returns nothing is the worst failure mode this engine has. **Written**: the spike
+      prints `SEARCH STOPPED: …` and raises an `InfoBar` rather than counting the failure as a plain
+      error; the timeout itself has not been provoked on a real machine.
 - [ ] Keep the portability promise honest: either data really lives beside the executable, or the
-      shell says where it lives.
-- [ ] Show the build identity. The build stamps `AssemblyMetadataAttribute("GitHash", <commit>)` into
+      shell says where it lives. The spike inherits `ApplicationPaths` (entry-assembly directory), so it
+      is portable by construction, but its own data directory has not been inspected yet.
+- [x] Show the build identity. The build stamps `AssemblyMetadataAttribute("GitHash", <commit>)` into
       every assembly in this repository (`Directory.Build.targets`), and
       `ProductInformation.ApplicationVersionText` reads it from the entry assembly — so a new shell
       gets the right value for free as long as the build goes through this repository. The WinForms
-      shell puts it in the window caption, the About dialog and the start/stop log lines.
+      shell puts it in the window caption, the About dialog and the start/stop log lines. (Observed in
+      the spike: the window caption carries it, and the spike passes no version information of its own.)
 
 
 ## 8. Verification available today
@@ -210,13 +231,14 @@ Ordered by impact on the WinUI 3 shell.
 dotnet test IcedAstroGrep.slnx
 ```
 
-106 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
+110 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
 minimum hit count, exclusions, subfolder recursion, regex timeout, `AbortAndWait`, encoding cache
 consistency and concurrency, `FilterItem` round trips, plug-in contract, and the traversal guards:
 context line limits, a real junction loop, overlapping start directories, unreadable exclusion
-values, binary detection beyond the first kilobyte), 36 in `IcedAstroGrep.AppServices.Tests` (settings
+values, binary detection beyond the first kilobyte), 40 in `IcedAstroGrep.AppServices.Tests` (settings
 atomicity, back-up recovery, write probe, real iFilter end-to-end, legacy code pages, the command line
-in all its implemented forms, the language files and lookup, the composed results pane, and the
+in all its implemented forms, the language files and lookup, the composed results pane and the source
+location of every line in it, the HTML document as both a string and a file, and the
 AppServices side of the shell boundary: no UI framework reference, the exporter templates embedded
 where the exporters look for them, the `pdftotext` resource name matching the code and reading back as
 an executable) and 11 in `IcedAstroGrep.WinForms.Tests` (window caption version and commit, the shell

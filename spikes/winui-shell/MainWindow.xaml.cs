@@ -298,7 +298,7 @@ namespace WinUiShell
 
 			StartButton.IsEnabled = false;
 			CancelButton.IsEnabled = true;
-			SearchPanel.IsEnabled = false;
+			SearchInputEnabled(false);
 			Progress.IsActive = true;
 			SetStatus("searching\u2026");
 
@@ -433,7 +433,7 @@ namespace WinUiShell
 			Progress.IsActive = false;
 			StartButton.IsEnabled = true;
 			CancelButton.IsEnabled = false;
-			SearchPanel.IsEnabled = true;
+			SearchInputEnabled(true);
 
 			SetStatus(string.Format(
 				"{0} in {1:0.00}s: {2} file(s) searched, {3} with hits, {4} hit line(s), {5} error(s)",
@@ -514,6 +514,30 @@ namespace WinUiShell
 			}
 		}
 
+		/// <summary>
+		/// Turns the search inputs on or off.
+		/// </summary>
+		/// <param name="enabled">Whether the inputs accept changes</param>
+		/// <remarks>
+		/// WinUI has no <c>IsEnabled</c> on a <see cref="StackPanel"/> — unlike WPF, where disabling a
+		/// container disables everything inside it — so the controls are listed one by one. Doing it this
+		/// way also keeps the state real for the keyboard and for screen readers, instead of the visual
+		/// dimming an <c>IsHitTestVisible</c> trick would give.
+		/// </remarks>
+		private void SearchInputEnabled(bool enabled)
+		{
+			PathBox.IsEnabled = enabled;
+			SearchBox.IsEnabled = enabled;
+			FileTypesBox.IsEnabled = enabled;
+			RecurseCheck.IsEnabled = enabled;
+			CaseCheck.IsEnabled = enabled;
+			WholeWordCheck.IsEnabled = enabled;
+			RegexCheck.IsEnabled = enabled;
+			NegationCheck.IsEnabled = enabled;
+			FileNamesOnlyCheck.IsEnabled = enabled;
+			LanguageBox.IsEnabled = enabled;
+		}
+
 		private static int ParseNumber(JsonElement root, string name)
 		{
 			if (!root.TryGetProperty(name, out JsonElement element))
@@ -530,7 +554,7 @@ namespace WinUiShell
 			{
 				// the WinUI shell has no printing of its own; the WebView brings it, which is one of the
 				// reasons route A was chosen
-				ResultsView.CoreWebView2?.ShowPrintUI();
+				ResultsView.CoreWebView2?.ShowPrintUI(CoreWebView2PrintDialogKind.Browser);
 			}
 			catch (Exception ex)
 			{

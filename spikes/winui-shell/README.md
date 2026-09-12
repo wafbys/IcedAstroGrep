@@ -113,6 +113,18 @@ strings have settled. Engine messages already come from the shared language file
   search box, **Alt+S/Alt+C** work, and whether the window follows your **system theme** (switch Windows to
   dark mode: nothing should stay white or black).
 
+## WinUI is not WPF: what the first real build caught
+
+The first build on a machine with NuGet access (2026-09-12) failed on four C# errors. They are worth
+knowing because all four are reflexes from WPF or from an older SDK:
+
+| Error | Cause | Fix applied |
+|---|---|---|
+| `CS0103: The name 'ProductInformation' does not exist` | `ProductInformation` lives in `IcedAstroGrep.Core`, so `using IcedAstroGrep;` alone is not enough (the spike's main file had both usings, the notifier only the outer one) | added `using IcedAstroGrep.Core;` |
+| `CS1061: 'StackPanel' does not contain a definition for 'IsEnabled'` | WPF disables a whole container; WinUI's `UIElement` has no `IsEnabled` — only `Control` does | `SearchInputEnabled(bool)` lists the ten input controls one by one, which also makes the state real for the keyboard and screen readers rather than just visually dimmed |
+| `CS7036: no argument given for the required parameter 'printDialogKind'` | current WebView2 SDKs made the dialog kind mandatory | `ShowPrintUI(CoreWebView2PrintDialogKind.Browser)` |
+| `WMC9999: Object reference not set` + `WMC1509: No LocalAssembly parameter given during MarkupCompilePass2` | **a cascade, not a XAML problem**: markup compile pass 2 needs the project's own assembly, and there was none because the C# compile had already failed | fix the C# errors first; the XAML errors disappear with them |
+
 ## Why it is not built here
 
 This environment cannot restore the Windows App SDK: large downloads come back truncated (measured — a

@@ -96,8 +96,11 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
    * 新壳直接复用语义，不必重新发明"上下文行怎么显示"；
    * **这些行为目前完全没有测试**（现有 84 个测试没有一个覆盖结果面板显示什么），抽出后可测；
    * §4 的三种查看器方案都会因此变便宜。
-2. **把命令行处理下沉到 AppServices**：`CommandLineProcessing.cs`（713）+ `CLOptions.cs`（139）。两个壳的
-   命令行行为必须完全一致，不适合由壳各自实现。
+2. ~~**把命令行处理下沉到 AppServices**~~ — **已完成（2026-09-12）**：`CommandLineProcessing.cs`（含手写的
+   `Arguments` 解析器与 `CommandLineArguments`）已在 AppServices，两个壳因此共享同一套开关与解析行为；
+   顺带发现 `CLOptions.cs` 是死代码（真正的解析是手写的，没有任何地方调用 `ParseArguments<CLOptions>`），
+   连同只服务于它的 `CommandLineParser` 包一起删除。命令行首次有了 11 个测试用例，并暴露了两处易踩边界：
+   多参数时裸目录会被静默忽略（要用 `/spath=`），`/otype` 会被小写。
 3. **把语言查找下沉**：7 个 `Language/*.xml` + "键→文本"的逻辑放 AppServices，`Language.cs` 只留 WinForms
    设计器遍历（`GenerateXml(Form frm, …)` 那些）。新壳用自己的资源方式呈现，但文案数据只有一份。
 4. 为 1 与 3 补测试。

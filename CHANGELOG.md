@@ -11,6 +11,8 @@
 
 - **项目按"壳"改名，程序集名保持不变**：`IcedAstroGrep.App` → `IcedAstroGrep.WinForms`，为第二个壳（WinUI 3）腾出命名规则。只改项目/目录名，`AssemblyName` 与 `RootNamespace` 仍是 `IcedAstroGrep`：两个壳都产出 `IcedAstroGrep.exe`，`Language.cs` 按"程序集名 + `.Language.` + 区域 + `.xml`"找资源、资源类名是 `IcedAstroGrep.Properties.Resources`，所以这两个名字都不能动。两个壳分开发布，因此同一程序集名不冲突。
 - **测试项目按"测谁"分家**：`IcedAstroGrep.App.Tests` → `IcedAstroGrep.WinForms.Tests`（只留壳自身的测试：版本戳、语言资源、壳确实引用 WinForms、HTML 颜色与原 `ColorTranslator` 等价），并新增 **`IcedAstroGrep.AppServices.Tests`**（设置持久化、旧代码页、iFilter 端到端、AppServices 侧的边界断言）。新项目**不设 `UseWindowsForms`**——它跑通本身就证明了这些服务不需要任何 UI 框架，也证明 `CodePagesEncodingProvider` 来自基础框架而不是 WindowsDesktop（这正是"第二个壳只引用 Core + AppServices 就够"的前提）。测试总数不变：84。
+- **命令行解析下沉到 `IcedAstroGrep.AppServices`，并删掉一个第三方依赖**：`CommandLineProcessing.cs`（含手写的 `Arguments` 解析器与 `CommandLineArguments` 结构）移入 AppServices（命名空间 `IcedAstroGrep.Windows` → `IcedAstroGrep`，壳按外层命名空间解析，调用点不变），因为两个壳的命令行行为必须一致。同时删除 `CLOptions.cs`：它是**死代码**——真正的解析由 `CommandLineProcessing.Arguments` 手写完成，全仓没有任何地方调用 `Parser.Default.ParseArguments<CLOptions>`，帮助窗口的选项表也是硬编码的，因此 `CommandLineParser` 这个包只服务于它，现已从解决方案中移除（`NOTICE` 同步更新）。这也顺带纠正了 `Arguments` 注释里"支持 `:` 分隔"的错误说法：`:` 作分隔符会破坏含盘符的值（如 `/spath=C:\temp`），实际从未实现，因此改注释而不是改行为。
+- **命令行首次获得测试覆盖**（`CommandLineProcessingTests`，11 个用例）：无参数、单目录即起始路径、多参数时必须 `/spath=`、`/stext` 的四种已实现写法、带空格值的去引号、各开关、导出隐含启动搜索且 `/otype` 被小写、上下文行数超限被丢弃、`/?` `/h` `/help`。写这些用例时暴露了两处容易踩的边界（多参数下裸目录被静默忽略、`/otype` 小写），已写进测试而非靠文档口口相传。
 
 ## [1.2.0] - 2026-09-12
 

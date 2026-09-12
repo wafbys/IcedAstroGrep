@@ -52,12 +52,12 @@ Xpdf source code for this version: https://www.xpdfreader.com/download.html
 Other libraries
 ---------------
 The application also depends on NuGet packages, each under its own license: AvalonEdit,
-CommandLineParser, DocumentFormat.OpenXml, ExcelDataReader, ExcelNumberFormat, NLog and TagLibSharp.
-Their license texts are distributed inside the packages themselves; see the package entries in
-IcedAstroGrep.App.csproj.
+DocumentFormat.OpenXml, ExcelDataReader, ExcelNumberFormat, NLog and TagLibSharp. Their license texts
+are distributed inside the packages themselves; see the package entries in the project files
+(IcedAstroGrep.WinForms.csproj for the shell, IcedAstroGrep.AppServices.csproj for the services).
 
-The CodePagesEncodingProvider type that the application registers for legacy code pages is supplied
-by the Windows Desktop shared framework, so no package is redistributed for it here.
+The CodePagesEncodingProvider type that the application registers for legacy code pages is supplied by
+the .NET shared framework (Microsoft.NETCore.App), so no package is redistributed for it here.
 
 The Mozilla Universal Charset Detector port under src/IcedAstroGrep.Core/EncodingDetection/Ude is
 covered by the license block at the top of each of its source files (MPL 1.1 / GPL 2.0 / LGPL 2.1).

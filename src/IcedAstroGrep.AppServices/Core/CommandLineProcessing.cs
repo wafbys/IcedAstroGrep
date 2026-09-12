@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Specialized;
 using System.Text.RegularExpressions;
 
 using IcedAstroGrep.Core.Logging;
 
-namespace IcedAstroGrep.Windows
+namespace IcedAstroGrep
 {
 	/// <summary>
 	/// Parses and allocates command line arguments in a predefined way.
@@ -645,9 +645,11 @@ namespace IcedAstroGrep.Windows
 			string Parameter = null;
 			string[] Parts;
 
-			// Valid parameters forms:
-			// {-,/,--}param{ ,=,:}((",')value(",'))
-			// Examples: -param1 value1 --param2 /param3:"Test-:-work" /param4=happy -param5 '--=nice=--'
+			// Valid parameter forms:
+			// {-,/,--}param{ ,=}((",')value(",'))
+			// Examples: -param1 value1 --param2 /param3="Test-:-work" /param4=happy -param5 '--=nice=--'
+			// ":" is deliberately NOT a separator, even though this comment used to claim it: making it
+			// one would split values that contain a drive letter (for example /spath=C:\temp).
 			foreach (string Txt in Args)
 			{
 				// Look for new parameters (-,/ or --) and a possible enclosed value (=,:)

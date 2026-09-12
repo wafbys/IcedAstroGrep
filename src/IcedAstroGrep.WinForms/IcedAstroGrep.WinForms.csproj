@@ -19,14 +19,13 @@
   </PropertyGroup>
   <ItemGroup>
     <!--
-      Only what this shell itself uses: AvalonEdit for the results viewer, CommandLineParser for
-      Windows/CLOptions.cs. The plug-ins' packages (DocumentFormat.OpenXml, ExcelDataReader,
-      ExcelNumberFormat, TagLibSharp) belong to IcedAstroGrep.AppServices, which owns the plug-ins, and
-      NLog belongs to IcedAstroGrep.Core, which owns LogClient; both reach this executable through the
-      project reference.
+      Only what this shell itself uses: AvalonEdit for the results viewer. The plug-ins' packages
+      (DocumentFormat.OpenXml, ExcelDataReader, ExcelNumberFormat, TagLibSharp) belong to
+      IcedAstroGrep.AppServices, which owns the plug-ins, and NLog belongs to IcedAstroGrep.Core, which
+      owns LogClient; both reach this executable through the project reference. CommandLineParser is
+      gone with CLOptions.cs: the command line is parsed by CommandLineProcessing in AppServices.
     -->
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
   </ItemGroup>
   <ItemGroup>
     <!-- IcedAstroGrep.IFilter arrives with AppServices, which is the only thing that uses it. -->

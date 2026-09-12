@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,5 +32,16 @@ namespace IcedAstroGrep.Output
 
       /// <summary>The number of context lines after a matched line</summary>
       public int ContextLinesAfter { get; set; }
+
+      /// <summary>
+      /// Whether each displayed line carries the file, line and column it came from as <c>data-</c>
+      /// attributes.
+      /// </summary>
+      /// <remarks>
+      /// Off by default, so an export is byte for byte what it always was. A viewer that wants clicks to
+      /// open the source turns it on and reads the attributes back, which is how the WinUI shell maps a
+      /// click in its results pane to a position in a file.
+      /// </remarks>
+      public bool IncludeSourceLocations { get; set; }
    }
 }

@@ -1,17 +1,21 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Text.Json;
 using System.Threading;
 
 using IcedAstroGrep;
 using IcedAstroGrep.Core;
 using IcedAstroGrep.Core.EncodingDetection;
 using IcedAstroGrep.Core.Logging;
-using IcedAstroGrep.Display;
+using IcedAstroGrep.Output;
 
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Web.WebView2.Core;
 
 namespace WinUiShell
 {
@@ -40,6 +44,7 @@ namespace WinUiShell
 		private int errorCount;
 		private int displayContextLines = 2;
 		private bool loadingSettings;
+		private bool bridgeWired;
 		private WinUiNotifier notifier;
 
 		/// <summary>
@@ -67,6 +72,17 @@ namespace WinUiShell
 			catch (Exception ex)
 			{
 				PluginText.Text = "plug-ins failed: " + ex.Message;
+			}
+
+			try
+			{
+				// the configured editors come from the same settings file the WinForms shell writes; with
+				// none configured, opening a hit falls back to the file's associated application
+				TextEditors.Load();
+			}
+			catch (Exception ex)
+			{
+				LogClient.Instance.Logger.Warn("The WinUI shell could not load the text editor settings: {0}", ex.Message);
 			}
 
 			ApplySettings();
@@ -224,7 +240,7 @@ namespace WinUiShell
 			SaveSettings(spec);
 
 			FileList.Items.Clear();
-			ResultsPane.Text = string.Empty;
+			ClearResults();
 
 			filesSearched = 0;
 			hitFiles = 0;
@@ -375,10 +391,18 @@ namespace WinUiShell
 				Text(outcome == "cancelled" ? "SearchCancelled" : "SearchFinished", outcome),
 				stopwatch.Elapsed.TotalSeconds, filesSearched, hitFiles, lineHits, errorCount));
 
-			ShowResults();
+			_ = ShowResultsAsync();
 		}
 
-		private void ShowResults()
+		/// <summary>
+		/// Shows the results in the WebView, using the very markup an HTML export produces.
+		/// </summary>
+		/// <remarks>
+		/// Route A of the evaluation: the pane, the exporter and the printed page are one document, so
+		/// there is nothing to keep in step. The lines carry their source position because the shell asks
+		/// for it, and a small script posts that position back when a line is clicked.
+		/// </remarks>
+		private async System.Threading.Tasks.Task ShowResultsAsync()
 		{
 			if (grep == null)
 			{
@@ -387,22 +411,115 @@ namespace WinUiShell
 
 			try
 			{
-				// The same composition the WinForms pane uses. This is the payoff of moving it into
-				// AppServices: the layout, the source line numbers and the blank lines between files are
-				// not re-implemented here.
-				ResultDocument document = ResultDocument.Build(grep.MatchResults, new ResultDocumentOptions
+				var settings = new MatchResultsExportSettings
 				{
-					BeforeContextLines = displayContextLines,
-					AfterContextLines = displayContextLines
-				});
+					Grep = grep,
+					GrepIndexes = Enumerable.Range(0, grep.MatchResults.Count).ToList(),
+					ShowLineNumbers = true,
+					ContextLinesBefore = displayContextLines,
+					ContextLinesAfter = displayContextLines,
+					IncludeSourceLocations = true
+				};
 
-				ResultsPane.Text = document.Text;
+				string html = MatchResultsExport.BuildResultsAsHTML(settings);
+
+				await ResultsView.EnsureCoreWebView2Async();
+
+				if (!bridgeWired)
+				{
+					ResultsView.CoreWebView2.WebMessageReceived += OnResultsMessage;
+					bridgeWired = true;
+				}
+
+				ResultsView.CoreWebView2.NavigateToString(html.Replace("</body>", ClickBridge + "</body>"));
 			}
 			catch (Exception ex)
 			{
-				ErrorText.Text = "Could not compose the results: " + ex.Message;
+				ErrorText.Text = "Could not show the results: " + ex.Message;
 			}
 		}
+
+		/// <summary>
+		/// Opens a hit in the configured text editor. The position comes from the clicked line's data
+		/// attributes, so this is the same "open at line and column" the WinForms shell offers.
+		/// </summary>
+		private void OnResultsMessage(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+		{
+			try
+			{
+				using (JsonDocument message = JsonDocument.Parse(args.WebMessageAsJson))
+				{
+					JsonElement root = message.RootElement;
+
+					string file = root.GetProperty("file").GetString();
+					int line = ParseNumber(root, "line");
+					int column = ParseNumber(root, "column");
+					string text = root.TryGetProperty("text", out JsonElement textElement) ? textElement.GetString() : string.Empty;
+
+					TextEditors.Open(new TextEditorOpener(file, line, column, text, SearchBox.Text), Notifier);
+				}
+			}
+			catch (Exception ex)
+			{
+				LogClient.Instance.Logger.Warn("The WinUI shell could not open the clicked result: {0}", ex.Message);
+			}
+		}
+
+		private static int ParseNumber(JsonElement root, string name)
+		{
+			if (!root.TryGetProperty(name, out JsonElement element))
+			{
+				return -1;
+			}
+
+			return int.TryParse(element.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : -1;
+		}
+
+		private void PrintResultsClick(object sender, RoutedEventArgs e)
+		{
+			try
+			{
+				// the WinUI shell has no printing of its own; the WebView brings it, which is one of the
+				// reasons route A was chosen
+				ResultsView.CoreWebView2?.ShowPrintUI();
+			}
+			catch (Exception ex)
+			{
+				ErrorText.Text = "Could not print the results: " + ex.Message;
+			}
+		}
+
+		private void ClearResults()
+		{
+			try
+			{
+				ResultsView.CoreWebView2?.NavigateToString("<html><body></body></html>");
+			}
+			catch (Exception)
+			{
+				// the control is not ready yet, and an empty pane is what we wanted anyway
+			}
+		}
+
+		/// <summary>
+		/// Turns a click on a result line into a message to the shell. Written with single quotes so it
+		/// can live in a verbatim string.
+		/// </summary>
+		private const string ClickBridge = @"
+<script>
+document.querySelectorAll('.srcline').forEach(function (el) {
+    el.style.cursor = 'pointer';
+    el.title = 'Open this line in the configured text editor';
+    el.addEventListener('click', function () {
+        window.chrome.webview.postMessage({
+            file: el.getAttribute('data-file'),
+            line: el.getAttribute('data-line'),
+            column: el.getAttribute('data-column'),
+            text: el.textContent
+        });
+    });
+});
+</script>";
 
 		private SearchInterfaces.SearchSpec BuildSearchSpec()
 		{

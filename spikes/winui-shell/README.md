@@ -42,8 +42,25 @@ versioned TFM may reference them; and the shell-agnostic half runs in a WinUI pr
 * implements `IUserNotifier` (`WinUiNotifier`, a `ContentDialog`) and uses it for the one message that
   deserves a dialog: a search that stopped because the pattern exceeded the match timeout.
 
-Deliberately not here yet: highlighting and click-to-open in the results pane (M2, waiting on the viewer
-decision), and the full options / plug-in / text editor screens (M3b).
+**M2 — the results viewer (route A: WebView2).** This version:
+
+* the results pane is a **WebView2** showing the very document an HTML export produces:
+  `MatchResultsExport.BuildResultsAsHTML(settings)` — the same function `SaveResultsAsHTML` writes to a
+  file, which a test now asserts (`TheBuiltDocumentIsExactlyWhatTheFileExportWrites`). So the pane has the
+  export's layout, its search-options summary and its highlighting, and the two cannot drift apart;
+* **click a line to open it** in the configured text editor at that line and column. The shell asks for
+  `IncludeSourceLocations` (off by default, so exported files are byte for byte what they were), the lines
+  then carry `data-file`/`data-line`/`data-column`, and a small injected script posts the clicked line back
+  over `WebMessageReceived` → `TextEditors.Open(opener, notifier)`;
+* **Print** works, because the page is HTML: `CoreWebView2.ShowPrintUI()`. This is where route A pays for
+  itself, since WinUI 3 has no printing of its own;
+* the `ResultDocument` model from §3.1 is *not* what this pane renders — the export markup is — so that
+  model stays the definition the WinForms pane and routes B/C build on.
+
+If the build reports that `Microsoft.Web.WebView2.Core` is missing, add a `Microsoft.Web.WebView2` package
+reference; the Windows App SDK normally brings it in transitively.
+
+Deliberately not here yet: the full options / plug-in / text editor screens (M3b).
 
 ## How to run it
 
@@ -66,7 +83,9 @@ Put a folder in the first box, a search text in the second, press **Search**.
   process, including the embedded `pdftotext`);
 * **the language picker**: change it and check that the status line's wording changes (English, German,
   Polish, …) — and that the WinForms shell starts in the same language afterwards, which is the shared
-  settings file working in both directions.
+  settings file working in both directions;
+* **M2**: whether the pane renders the results as a formatted page (not plain text), whether **clicking a
+  result line opens it in your text editor at the right line**, and whether **Print** shows the print UI.
 
 ## Why it is not built here
 

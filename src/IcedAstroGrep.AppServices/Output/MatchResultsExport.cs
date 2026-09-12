@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.Net;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -238,69 +240,111 @@ namespace IcedAstroGrep.Output
       {
          using (var writer = new StreamWriter(settings.Path, false, System.Text.Encoding.UTF8))
          {
-            var allSections = new System.Text.StringBuilder();
-            string repeater;
-            StringBuilder lines;
-            string template = HTMLHelper.GetContents("Output.html");
-            string css = HTMLHelper.GetContents("Output.css");
-            int totalHits = 0;
-            bool isFileSearch = string.IsNullOrEmpty(settings.Grep.SearchSpec.SearchText);
-
-            if (settings.Grep.SearchSpec.ReturnOnlyFileNames || isFileSearch)
-               template = HTMLHelper.GetContents("Output-fileNameOnly.html");
-
-            css = HTMLHelper.ReplaceCssHolders(css);
-            template = template.Replace("%%style%%", css);
-            template = template.Replace("%%title%%", "IcedAstroGrep Results");
-
-            int rStart = template.IndexOf("[repeat]");
-            int rStop = template.IndexOf("[/repeat]") + "[/repeat]".Length;
-            string repeat = template.Substring(rStart, rStop - rStart);
-
-            string repeatSection = repeat;
-            repeatSection = repeatSection.Replace("[repeat]", string.Empty);
-            repeatSection = repeatSection.Replace("[/repeat]", string.Empty);
-
-            // loop through File Names list
-            for (int i = 0; i < settings.GrepIndexes.Count; i++)
-            {
-               var hitObject = settings.Grep.RetrieveMatchResult(settings.GrepIndexes[i]);
-
-               lines = new StringBuilder();
-               repeater = repeatSection;
-               string fileLine = string.Format("{0} (Total: {1})", hitObject.File.FullName, hitObject.HitCount);
-               repeater = repeater.Replace("%%file%%", fileLine);
-               repeater = repeater.Replace("%%filesep%%", new string('-', fileLine.Length));
-               totalHits += hitObject.HitCount;
-
-               var matches = hitObject.GetDisplayMatches(settings.ContextLinesBefore, settings.ContextLinesAfter);
-               for (int j = 0; j < matches.Count; j++)
-               {
-                  string line = matches[j].Line;
-                  if (settings.RemoveLeadingWhiteSpace)
-                  {
-                     line = line.TrimStart();
-                  }
-
-                  if (settings.ShowLineNumbers && matches[j].LineNumber > -1)
-                  {
-                     line = string.Format("{0}: {1}", matches[j].LineNumber, line);
-                  }
-
-                  lines.Append(HTMLHelper.GetHighlightLine(line, settings.Grep));
-               }
-               
-               repeater = repeater.Replace("%%lines%%", lines.ToString());
-
-               allSections.Append(repeater);
-            }
-
-            template = template.Replace(repeat, allSections.ToString());
-            template = HTMLHelper.ReplaceSearchOptions(template, settings.Grep, totalHits, settings);
-
-            // write out template to the file
-            writer.WriteLine(template);
+            WriteResultsAsHTML(settings, writer);
          }
+      }
+
+      /// <summary>
+      /// Builds the results as an HTML document.
+      /// </summary>
+      /// <remarks>
+      /// The same markup <see cref="SaveResultsAsHTML"/> writes to a file, so a shell can show results
+      /// in a viewer without exporting one first: the pane and the export cannot drift apart.
+      /// </remarks>
+      /// <param name="settings">Export settings</param>
+      /// <returns>The HTML document</returns>
+      public static string BuildResultsAsHTML(MatchResultsExportSettings settings)
+      {
+         using (var writer = new StringWriter())
+         {
+            WriteResultsAsHTML(settings, writer);
+
+            return writer.ToString();
+         }
+      }
+
+      /// <summary>
+      /// Writes the HTML document to the given writer.
+      /// </summary>
+      /// <param name="settings">Export settings</param>
+      /// <param name="writer">Writer that receives the document</param>
+      private static void WriteResultsAsHTML(MatchResultsExportSettings settings, TextWriter writer)
+      {
+         var allSections = new System.Text.StringBuilder();
+         string repeater;
+         StringBuilder lines;
+         string template = HTMLHelper.GetContents("Output.html");
+         string css = HTMLHelper.GetContents("Output.css");
+         int totalHits = 0;
+         bool isFileSearch = string.IsNullOrEmpty(settings.Grep.SearchSpec.SearchText);
+
+         if (settings.Grep.SearchSpec.ReturnOnlyFileNames || isFileSearch)
+            template = HTMLHelper.GetContents("Output-fileNameOnly.html");
+
+         css = HTMLHelper.ReplaceCssHolders(css);
+         template = template.Replace("%%style%%", css);
+         template = template.Replace("%%title%%", "IcedAstroGrep Results");
+
+         int rStart = template.IndexOf("[repeat]");
+         int rStop = template.IndexOf("[/repeat]") + "[/repeat]".Length;
+         string repeat = template.Substring(rStart, rStop - rStart);
+
+         string repeatSection = repeat;
+         repeatSection = repeatSection.Replace("[repeat]", string.Empty);
+         repeatSection = repeatSection.Replace("[/repeat]", string.Empty);
+
+         // loop through File Names list
+         for (int i = 0; i < settings.GrepIndexes.Count; i++)
+         {
+            var hitObject = settings.Grep.RetrieveMatchResult(settings.GrepIndexes[i]);
+
+            lines = new StringBuilder();
+            repeater = repeatSection;
+            string fileLine = string.Format("{0} (Total: {1})", hitObject.File.FullName, hitObject.HitCount);
+            repeater = repeater.Replace("%%file%%", fileLine);
+            repeater = repeater.Replace("%%filesep%%", new string('-', fileLine.Length));
+            totalHits += hitObject.HitCount;
+
+            var matches = hitObject.GetDisplayMatches(settings.ContextLinesBefore, settings.ContextLinesAfter);
+            for (int j = 0; j < matches.Count; j++)
+            {
+               string line = matches[j].Line;
+               if (settings.RemoveLeadingWhiteSpace)
+               {
+                  line = line.TrimStart();
+               }
+
+               if (settings.ShowLineNumbers && matches[j].LineNumber > -1)
+               {
+                  line = string.Format("{0}: {1}", matches[j].LineNumber, line);
+               }
+
+               string highlighted = HTMLHelper.GetHighlightLine(line, settings.Grep);
+
+               // A viewer needs to know which file and line a click landed on; an export does not, so this
+               // is off by default and the exported markup is unchanged.
+               if (settings.IncludeSourceLocations)
+               {
+                  lines.AppendFormat(
+                     "<div class=\"srcline\" data-file=\"{0}\" data-line=\"{1}\" data-column=\"{2}\">{3}</div>",
+                     WebUtility.HtmlEncode(hitObject.File.FullName), matches[j].LineNumber, matches[j].ColumnNumber, highlighted);
+               }
+               else
+               {
+                  lines.Append(highlighted);
+               }
+            }
+            
+            repeater = repeater.Replace("%%lines%%", lines.ToString());
+
+            allSections.Append(repeater);
+         }
+
+         template = template.Replace(repeat, allSections.ToString());
+         template = HTMLHelper.ReplaceSearchOptions(template, settings.Grep, totalHits, settings);
+
+         // write out template to the file
+         writer.WriteLine(template);
       }
 
       /// <summary>

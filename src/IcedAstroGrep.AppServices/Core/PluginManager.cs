@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -184,12 +184,28 @@ namespace IcedAstroGrep
                string version = values[1];
                string enabled = values[2];
 
+               // A hand edited or truncated plugins config must not stop the application from starting:
+               // keep this plugin's current state and carry on.
+               if (!bool.TryParse(enabled, out bool parsedEnabled))
+               {
+                  LogClient.Instance.Logger.Warn("The saved state of plugin '{0}' has an unreadable enabled flag ('{1}'), so its state is left as it is.", name, enabled);
+                  continue;
+               }
+
                for (int i = 0; i < __PluginCollection.Count; i++)
                {
                   if (__PluginCollection[i].Plugin.Name.Equals(name))
                   {
-                     __PluginCollection[i].Enabled = bool.Parse(enabled);
-                     __PluginCollection[i].Index = values.Length == 4 ? int.Parse(values[3]) : i;
+                     int parsedIndex = i;
+
+                     if (values.Length == 4 && !int.TryParse(values[3], out parsedIndex))
+                     {
+                        LogClient.Instance.Logger.Warn("The saved state of plugin '{0}' has an unreadable position ('{1}'), so it keeps its position.", name, values[3]);
+                        parsedIndex = i;
+                     }
+
+                     __PluginCollection[i].Enabled = parsedEnabled;
+                     __PluginCollection[i].Index = parsedIndex;
                      break;
                   }
                }

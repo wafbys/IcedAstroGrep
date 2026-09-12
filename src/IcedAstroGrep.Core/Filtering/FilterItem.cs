@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -50,6 +50,12 @@ namespace IcedAstroGrep.Core
 		/// Escapes <see cref="DELIMETER"/>, <see cref="LIST_DELIMETER"/> and itself inside a field.
 		/// </summary>
 		private const char ESCAPE_CHAR = '\\';
+
+		/// <summary>
+		/// Whether a non-numeric size/length exclusion value has already been reported, so a bad value
+		/// produces one log line per search instead of one per file.
+		/// </summary>
+		private bool loggedUnparseableLongValue;
 
 		/// <summary>
 		/// Creates an instance of this class.
@@ -376,11 +382,24 @@ namespace IcedAstroGrep.Core
 			try
 			{
 				const int MAX_NULL_COUNT = 2;
-				byte[] buffer = new byte[1024];
+				// This always said 10 KB while the buffer was 1 KB; the documented intent is the one that
+				// finds binary files whose NUL pairs start a little further in. A single Read is not
+				// guaranteed to fill the buffer either, so read until it is full or the file ends.
+				byte[] buffer = new byte[10 * 1024];
 				int count = 0;
 				using (FileStream readStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 				{
-					count = readStream.Read(buffer, 0, buffer.Length);
+					while (count < buffer.Length)
+					{
+						int read = readStream.Read(buffer, count, buffer.Length - count);
+
+						if (read <= 0)
+						{
+							break;
+						}
+
+						count += read;
+					}
 				}
 
 				int nullCount = 0;
@@ -629,7 +648,19 @@ namespace IcedAstroGrep.Core
 		{
 			if (Enabled && (FilterType.ValueType == FilterType.ValueTypes.Long || FilterType.ValueType == IcedAstroGrep.Core.FilterType.ValueTypes.Size))
 			{
-				long itemValue = Convert.ToInt64(Value);
+				// A value that is not a number must not throw once per file for the whole search: an
+				// exclusion the user typed by hand (or a hand edited settings file) simply never matches,
+				// and the log says so once instead of once per file.
+				if (!long.TryParse(Value, out long itemValue))
+				{
+					if (!loggedUnparseableLongValue)
+					{
+						loggedUnparseableLongValue = true;
+						Logging.LogClient.Instance.Logger.Warn("The exclusion value '{0}' for {1} is not a number, so this exclusion is ignored.", Value, FilterType.SubCategory);
+					}
+
+					return false;
+				}
 
 				switch (ValueOption)
 				{

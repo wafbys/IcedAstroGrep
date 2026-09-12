@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -187,27 +187,31 @@ namespace IcedAstroGrep.Plugins.MediaTag
 			{
 				try
 				{
-					TagLib.File tagFile = TagLib.File.Create(file.FullName);
-
-					if (tagFile != null)
+					// TagLib.File keeps the underlying stream open, so it has to be disposed for every
+					// file that is searched; otherwise each media file holds a handle until its finalizer
+					// runs.
+					using (TagLib.File tagFile = TagLib.File.Create(file.FullName))
 					{
-						Regex reg = IcedAstroGrep.Core.Grep.BuildSearchRegEx(searchSpec);
+						if (tagFile != null)
+						{
+							Regex reg = IcedAstroGrep.Core.Grep.BuildSearchRegEx(searchSpec);
 
-						// search different tags
-						GrepTag("Title", tagFile.Tag.Title, file, searchSpec, reg, ref match);
-						GrepTag("Album", tagFile.Tag.Album, file, searchSpec, reg, ref match);
-						GrepTag("Comment", tagFile.Tag.Comment, file, searchSpec, reg, ref match);
-						GrepTag("Lyrics", tagFile.Tag.Lyrics, file, searchSpec, reg, ref match);
-						GrepTag("Conductor", tagFile.Tag.Conductor, file, searchSpec, reg, ref match);
-						GrepTag("Year", tagFile.Tag.Year.ToString(), file, searchSpec, reg, ref match);
-						GrepTag("Composers", tagFile.Tag.JoinedComposers, file, searchSpec, reg, ref match);
-						GrepTag("AlbumArtists", tagFile.Tag.JoinedAlbumArtists, file, searchSpec, reg, ref match);
-						GrepTag("Genres", tagFile.Tag.JoinedGenres, file, searchSpec, reg, ref match);
-						GrepTag("Performers", tagFile.Tag.JoinedPerformers, file, searchSpec, reg, ref match);
-					}
-					else
-					{
-						throw new Exception("Unable to create tagging reference from the file");
+							// search different tags
+							GrepTag("Title", tagFile.Tag.Title, file, searchSpec, reg, ref match);
+							GrepTag("Album", tagFile.Tag.Album, file, searchSpec, reg, ref match);
+							GrepTag("Comment", tagFile.Tag.Comment, file, searchSpec, reg, ref match);
+							GrepTag("Lyrics", tagFile.Tag.Lyrics, file, searchSpec, reg, ref match);
+							GrepTag("Conductor", tagFile.Tag.Conductor, file, searchSpec, reg, ref match);
+							GrepTag("Year", tagFile.Tag.Year.ToString(), file, searchSpec, reg, ref match);
+							GrepTag("Composers", tagFile.Tag.JoinedComposers, file, searchSpec, reg, ref match);
+							GrepTag("AlbumArtists", tagFile.Tag.JoinedAlbumArtists, file, searchSpec, reg, ref match);
+							GrepTag("Genres", tagFile.Tag.JoinedGenres, file, searchSpec, reg, ref match);
+							GrepTag("Performers", tagFile.Tag.JoinedPerformers, file, searchSpec, reg, ref match);
+						}
+						else
+						{
+							throw new Exception("Unable to create tagging reference from the file");
+						}
 					}
 				}
 				catch (Exception funcEx)

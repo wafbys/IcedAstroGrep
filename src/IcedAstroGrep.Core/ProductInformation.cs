@@ -1,5 +1,4 @@
 using System;
-using System.Drawing;
 using System.Reflection;
 
 namespace IcedAstroGrep.Core
@@ -17,8 +16,6 @@ namespace IcedAstroGrep.Core
 
 		/// <summary>Metadata key carrying the commit in the assembly built from this repository.</summary>
 		private const string CommitMetadataKey = "GitHash";
-
-		public static Color ApplicationColor = Color.FromArgb(251, 127, 6);
 
 		public static string ApplicationName = "IcedAstroGrep";
 
@@ -86,7 +83,16 @@ namespace IcedAstroGrep.Core
 			return UnknownCommit;
 		}
 
-		/// <summary>IcedAstroGrep is portable-only; settings live next to the executable.</summary>
-		public static bool IsPortable => true;
+		/// <summary>
+		/// IcedAstroGrep is portable-only: settings, plug-ins and the log live next to the executable
+		/// in every shell, and neither shell is packaged.
+		/// </summary>
+		/// <remarks>
+		/// A constant rather than a property, because there is no packaged build to report a
+		/// difference for and this is not a run time option; see docs/CORE-SHELL-CONTRACT.md §6.1 for
+		/// the decision. If a packaged build ever exists, this is the one place that has to change,
+		/// and the compiler will find every shell that branched on it.
+		/// </remarks>
+		public const bool IsPortable = true;
 	}
 }

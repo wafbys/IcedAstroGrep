@@ -290,14 +290,15 @@ namespace IcedAstroGrep
                //  %3 with column
                //  %4 with search text
                string args = textEditor.Arguments;
+               string escapedPath = EscapeCommandLineArgument(path);
                if (textEditor.UseQuotesAroundFileName)
                {
-                  path = "\"" + path + "\"";
+                  escapedPath = "\"" + escapedPath + "\"";
                }
-               args = args.Replace("%1", path);
+               args = args.Replace("%1", escapedPath);
                args = args.Replace("%2", line.ToString());
                args = args.Replace("%3", column.ToString());
-               args = args.Replace("%4", searchText);
+               args = args.Replace("%4", EscapeCommandLineArgument(searchText));
 
                System.Diagnostics.Process.Start(textEditor.Editor, args);
             }
@@ -308,6 +309,28 @@ namespace IcedAstroGrep
 
             Notify(notifier, "TextEditorsErrorGeneric", NotificationSeverity.Warning, path, ex.Message);
          }
+      }
+
+      /// <summary>
+      /// Escapes a value that is substituted into the user's text editor command line template.
+      /// </summary>
+      /// <remarks>
+      /// The template is a raw command line written by the user for their own editor, so this is not a
+      /// trust boundary. A quote inside a substituted value would still end that argument early and hand
+      /// the rest to the editor as extra switches, so quotes are escaped. Backslashes are deliberately
+      /// left alone: they are literal unless they precede a quote, and doubling them would corrupt the
+      /// ordinary case of a path pasted into the search text.
+      /// </remarks>
+      /// <param name="value">Value to escape, can be null</param>
+      /// <returns>Value with quotes escaped for the Windows command line parser</returns>
+      private static string EscapeCommandLineArgument(string value)
+      {
+         if (string.IsNullOrEmpty(value))
+         {
+            return string.Empty;
+         }
+
+         return value.Replace("\"", "\\\"");
       }
 
       /// <summary>

@@ -140,5 +140,48 @@ namespace IcedAstroGrep.Core.Tests
 			Assert.Equal(string.Empty, FilterItem.ConvertFilterItemsToString(new List<FilterItem>()));
 			Assert.Empty(FilterItem.ConvertStringToFilterItems(string.Empty));
 		}
+
+		[Fact]
+		public void AnUnreadableSizeValueNeverMatchesInsteadOfThrowing()
+		{
+			using (var folder = new TempFolder())
+			{
+				string path = folder.Write("size.txt", "needle");
+
+				// a size exclusion whose value is not a number used to throw FormatException, once per
+				// file, for the whole search
+				var item = new FilterItem(new FilterType(FilterType.Categories.File, FilterType.SubCategories.Size), "not-a-number", FilterType.ValueOptions.GreaterThan, false, true);
+
+				Assert.False(item.ShouldExcludeFile(new System.IO.FileInfo(path), out _));
+			}
+		}
+
+		[Fact]
+		public void BinaryDetectionLooksPastTheFirstKilobyte()
+		{
+			using (var folder = new TempFolder())
+			{
+				// a kilobyte of text, then two NUL pairs at about 4 KB: the buffer used to be 1 KB while
+				// the comment promised 10 KB, so this file was reported as text
+				var content = new List<byte>(System.Text.Encoding.ASCII.GetBytes(new string('a', 4096)));
+				content.AddRange(new byte[] { 0, 0, (byte)'b', (byte)'c', 0, 0 });
+
+				string path = System.IO.Path.Combine(folder.Path, "binary.bin");
+				System.IO.File.WriteAllBytes(path, content.ToArray());
+
+				Assert.True(FilterItem.IsBinaryFile(new System.IO.FileInfo(path)));
+			}
+		}
+
+		[Fact]
+		public void PlainTextIsNotReportedAsBinary()
+		{
+			using (var folder = new TempFolder())
+			{
+				string path = folder.Write("text.txt", new string('a', 8192));
+
+				Assert.False(FilterItem.IsBinaryFile(new System.IO.FileInfo(path)));
+			}
+		}
 	}
 }

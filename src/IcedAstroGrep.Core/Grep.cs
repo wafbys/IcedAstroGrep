@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -75,6 +75,26 @@ namespace IcedAstroGrep.Core
 		/// otherwise hang the search thread forever and make cancellation ineffective.
 		/// </summary>
 		public static readonly TimeSpan SearchRegExTimeout = TimeSpan.FromSeconds(2);
+
+		/// <summary>
+		/// Maximum number of context lines a search may ask for.
+		/// </summary>
+		/// <remarks>
+		/// The search allocates one ring buffer per file sized by <see cref="ISearchSpec.ContextLines"/>,
+		/// so an unbounded value from a programmatic caller turns into an out-of-memory error on the
+		/// first file instead of a slow search. The WinForms shell only offers a handful
+		/// (Constants.MAX_CONTEXT_LINES is 25), so this limit is generous on purpose: it rejects
+		/// nonsense rather than restricting the shells.
+		/// </remarks>
+		public const int MaxContextLines = 1000;
+
+		/// <summary>
+		/// Real (link-resolved) directories already walked by this search, with the file filter they were
+		/// walked for. A search can reach the same directory more than once: start directories may nest,
+		/// and a junction or symbolic link may point at one of its own ancestors, which would recurse
+		/// until the stack overflows (and that cannot be caught).
+		/// </summary>
+		private HashSet<string> visitedDirectories;
 
 		/// <summary>
 		/// Initializes a new instance of the Grep class.
@@ -374,6 +394,12 @@ namespace IcedAstroGrep.Core
 		{
 			ThrowIfCancelled();
 
+			ValidateSearchSpec();
+
+			// see visitedDirectories: one set for the whole search, so a directory is walked once per
+			// file filter even when several start directories overlap or a link points back at an ancestor
+			visitedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
 			// build the search regular expression once per search instead of once per file
 			_searchRegEx = BuildSearchRegEx(SearchSpec);
 
@@ -410,6 +436,27 @@ namespace IcedAstroGrep.Core
 						}
 					}
 				}
+			}
+		}
+
+		/// <summary>
+		/// Rejects a search specification the engine cannot honour, before it touches a file.
+		/// </summary>
+		/// <remarks>
+		/// The alternative is failing deeper in: a negative context count throws while allocating the
+		/// ring buffer, and a huge one allocates it per file until memory runs out. A shell surfaces
+		/// this through the search error event, the same way it surfaces a pattern that exceeds the
+		/// match timeout.
+		/// </remarks>
+		/// <exception cref="ArgumentOutOfRangeException">ContextLines is negative or above <see cref="MaxContextLines"/>.</exception>
+		private void ValidateSearchSpec()
+		{
+			if (SearchSpec.ContextLines < 0 || SearchSpec.ContextLines > MaxContextLines)
+			{
+				throw new ArgumentOutOfRangeException(
+					"ISearchSpec.ContextLines",
+					SearchSpec.ContextLines,
+					string.Format("ContextLines must be between 0 and {0}.", MaxContextLines));
 			}
 		}
 
@@ -709,6 +756,17 @@ namespace IcedAstroGrep.Core
 				}
 			}
 
+			// A directory can be reached under more than one name: a junction or symbolic link may point
+			// at one of its own ancestors, which would recurse until the stack overflows (and that cannot
+			// be caught), two links may point at the same place, and one start directory may sit inside
+			// another. Walk each real directory once per file filter. This is checked after the exclusion
+			// test so a filtered directory keeps being reported as filtered rather than silently
+			// consuming the slot.
+			if (!TryEnterDirectory(sourceDirectory, sourceFileFilter))
+			{
+				return;
+			}
+
 			// Check for File Filter
 			string filePattern = "*";
 			if (sourceFileFilter != null)
@@ -755,6 +813,47 @@ namespace IcedAstroGrep.Core
 					}
 				}
 			}
+		}
+
+		/// <summary>
+		/// Marks a directory as walked by this search.
+		/// </summary>
+		/// <param name="directory">Directory about to be walked</param>
+		/// <param name="fileFilter">File filter the directory is being walked for, can be null</param>
+		/// <returns>true when this directory has not been walked for this filter yet, false otherwise</returns>
+		private bool TryEnterDirectory(DirectoryInfo directory, string fileFilter)
+		{
+			// The filter is part of the key on purpose: a search with several filters walks the tree once
+			// per filter. NUL is the separator because it cannot occur in a path or in a filter.
+			string key = GetRealPath(directory) + "\0" + (fileFilter ?? string.Empty);
+
+			return visitedDirectories.Add(key);
+		}
+
+		/// <summary>
+		/// Resolves symbolic links and junctions, so that a directory reached through a link produces
+		/// the same key as the directory it points at.
+		/// </summary>
+		/// <param name="directory">Directory to resolve</param>
+		/// <returns>Final target path when the directory is a link, its own full path otherwise</returns>
+		private static string GetRealPath(DirectoryInfo directory)
+		{
+			try
+			{
+				DirectoryInfo target = directory.ResolveLinkTarget(true) as DirectoryInfo;
+
+				if (target != null)
+				{
+					return target.FullName;
+				}
+			}
+			catch (Exception ex)
+			{
+				// a link that cannot be resolved must not cost us the directory itself
+				Logging.LogClient.Instance.Logger.Debug("Unable to resolve the target of {0}: {1}", directory.FullName, ex.Message);
+			}
+
+			return directory.FullName;
 		}
 
 		/// <summary>

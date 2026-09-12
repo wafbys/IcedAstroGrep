@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -431,6 +431,10 @@ namespace IcedAstroGrep.Plugins.MicrosoftWord
 			{
 				Trace(ex.ToString());
 			}
+
+			// A load that failed half way can still have created a hidden WINWORD instance: hand it back
+			// here instead of leaving a process that nothing owns and nothing will close.
+			Unload();
 
 			IsUsable = false;
 			return false;

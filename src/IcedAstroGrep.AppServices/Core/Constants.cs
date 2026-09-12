@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -122,7 +122,11 @@ namespace IcedAstroGrep
 		/// <summary>LogDisplay window default column value width</summary>
 		public const int LOG_DISPLAY_COLUMN_WIDTH_VALUE = 600;
 
-		/// <summary>Maximum number of context lines allowed</summary>
+		/// <summary>
+		/// Maximum number of context lines the shell offers. Deliberately far below the engine's
+		/// Grep.MaxContextLines: this keeps the drop down short, while the engine limit exists only to
+		/// reject nonsense from a programmatic caller.
+		/// </summary>
 		public const int MAX_CONTEXT_LINES = 25;
 
 		// Maximum value constants

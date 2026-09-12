@@ -7,7 +7,7 @@ using IFilterTextReader.Exceptions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace IcedAstroGrep.Tests
+namespace IcedAstroGrep.AppServices.Tests
 {
 	/// <summary>
 	/// Exercises the iFilter path against a real COM filter installed on the machine. That path is

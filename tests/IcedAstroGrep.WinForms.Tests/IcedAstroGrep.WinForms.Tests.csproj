@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!--
+      Kept on purpose: these tests assert things about the WinForms shell itself (its version stamp,
+      its language resources, that it does reference WinForms, and the HTML colour text it used to
+      produce through System.Drawing.Common). Everything that only covers the shared services lives in
+      IcedAstroGrep.AppServices.Tests, which needs no UI framework at all.
+    -->
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
@@ -12,6 +18,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\IcedAstroGrep.App\IcedAstroGrep.App.csproj" />
+    <ProjectReference Include="..\..\src\IcedAstroGrep.WinForms\IcedAstroGrep.WinForms.csproj" />
   </ItemGroup>
 </Project>

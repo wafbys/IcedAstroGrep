@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!--
+      Deliberately NO UseWindowsForms: these tests cover the shell-agnostic services (settings
+      persistence, legacy code pages, the iFilter plug-in end to end, and the AppServices side of the
+      shell boundary), and the point of running them without a UI framework is that they prove those
+      services work for any shell. Nothing in this project may reach for the WinForms shell; if a test
+      needs the shell, it belongs in IcedAstroGrep.WinForms.Tests.
+    -->
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\IcedAstroGrep.AppServices\IcedAstroGrep.AppServices.csproj" />
+  </ItemGroup>
+</Project>

@@ -2,7 +2,7 @@ using IcedAstroGrep.Core;
 
 using Xunit;
 
-namespace IcedAstroGrep.Tests
+namespace IcedAstroGrep.WinForms.Tests
 {
 	/// <summary>
 	/// The window caption is built from the shell assembly's own version and the commit stamped into

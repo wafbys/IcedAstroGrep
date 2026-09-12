@@ -4,7 +4,7 @@ using IcedAstroGrep.Core;
 
 using Xunit;
 
-namespace IcedAstroGrep.Tests
+namespace IcedAstroGrep.AppServices.Tests
 {
 	/// <summary>
 	/// The legacy code pages are needed by the Excel reader and by the encoding detectors, and they

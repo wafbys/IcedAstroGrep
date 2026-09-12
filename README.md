@@ -37,7 +37,7 @@ unrestricted shell both work exactly as written above.
 ## Green / portable publish
 
 ```powershell
-dotnet publish src\IcedAstroGrep.App\IcedAstroGrep.App.csproj -c Release -r win-x64 --self-contained true -o publish\win-x64
+dotnet publish src\IcedAstroGrep.WinForms\IcedAstroGrep.WinForms.csproj -c Release -r win-x64 --self-contained true -o publish\win-x64
 ```
 
 Zip the `publish\win-x64` folder. Settings, logs, and encoding cache live next to `IcedAstroGrep.exe`.
@@ -63,9 +63,14 @@ on the way. It is a maintenance helper, not part of the build.
 |---|---|
 | `IcedAstroGrep.Core` | Search engine, filters, encoding, plugin contract |
 | `IcedAstroGrep.IFilter` | Windows IFilter wrapper |
-| `IcedAstroGrep.App` | WinForms shell (light theme) |
+| `IcedAstroGrep.AppServices` | Settings, built-in plug-ins, exporters — no UI framework |
+| `IcedAstroGrep.WinForms` | WinForms shell (light theme). Builds `IcedAstroGrep.exe` |
 | `IcedAstroGrep.Core.Tests` | Engine tests |
-| `IcedAstroGrep.App.Tests` | Settings and iFilter integration tests |
+| `IcedAstroGrep.AppServices.Tests` | Services tests (no UI framework) |
+| `IcedAstroGrep.WinForms.Tests` | Shell tests |
+
+Projects are named after the shell or library they build; **assemblies keep the product name**
+(`IcedAstroGrep`), so both shells build an `IcedAstroGrep.exe` and ship in their own folder.
 
 ## Shells
 

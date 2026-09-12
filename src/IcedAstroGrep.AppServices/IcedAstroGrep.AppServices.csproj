@@ -7,7 +7,7 @@
       assembly is the shell-agnostic half of the application (settings, built-in plug-ins and result
       exporters), and a WinUI 3 shell has to be able to reference it without dragging WinForms or WPF
       into the process. The WinForms parts that used to sit in App/Core (Convertors' UI members, the
-      theme, desktop shortcuts, the text editor message boxes) moved to IcedAstroGrep.App instead; see
+      theme, desktop shortcuts, the text editor message boxes) moved to IcedAstroGrep.WinForms instead; see
       docs/CORE-SHELL-CONTRACT.md.
 
       The namespaces of the moved files were left alone (IcedAstroGrep, IcedAstroGrep.Plugins.*,

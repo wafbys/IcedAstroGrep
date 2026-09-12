@@ -3,6 +3,13 @@
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
+    <!--
+      The project is named after the shell, the assembly after the product: both shells build
+      IcedAstroGrep.exe, and Language.cs finds its files as "<assembly>.Language.<culture>.xml" while
+      the resource class is IcedAstroGrep.Properties.Resources, so neither name may drift. The shells
+      are shipped in separate folders, which is also why two projects may share an assembly name.
+      IcedAstroGrep.WinUI does the same.
+    -->
     <RootNamespace>IcedAstroGrep</RootNamespace>
     <AssemblyName>IcedAstroGrep</AssemblyName>
     <ApplicationIcon>Images\AstroGrep_Icon_256x256.ico</ApplicationIcon>

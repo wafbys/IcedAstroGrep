@@ -3,7 +3,7 @@ using System.IO;
 
 using Xunit;
 
-namespace IcedAstroGrep.Tests
+namespace IcedAstroGrep.AppServices.Tests
 {
 	/// <summary>
 	/// A settings record shaped like the real ones: a public class with writable properties.

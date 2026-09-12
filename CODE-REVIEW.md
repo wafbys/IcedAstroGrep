@@ -1,5 +1,11 @@
 # IcedAstroGrep 代码评审报告
 
+> **读这份报告前先看这里**：报告正文引用的是**评审当时（1.1.0 前后）的布局**。此后两次结构调整让部分路径失效：
+> 1.2.0 把壳无关代码抽到了 `IcedAstroGrep.AppServices`（`App/Plugins`、`App/Output`、`App/Core` 中的大部分），
+> 2026-09-12 又把壳项目 `IcedAstroGrep.App` 改名为 `IcedAstroGrep.WinForms`（只改项目名，程序集名仍是
+> `IcedAstroGrep`）。因此正文里的 `src/IcedAstroGrep.App/...` 路径现在对应 `IcedAstroGrep.WinForms/...`
+> （壳部分）或 `IcedAstroGrep.AppServices/...`（服务部分）；§6 的状态表是**当前**状态，以它为准。
+
 评审对象：`C:\Users\YF\YF21CN\Src\IcedAstroGrep`（AstroGrep 4.4.9 的 .NET 10 便携版分支）
 评审范围：全部 291 个受版本控制的文件（211 个 `.cs`），4 个项目
 评审方式：静态阅读 + 实际编译 + 测试执行 + 针对性复现实验

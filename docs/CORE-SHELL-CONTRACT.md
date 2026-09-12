@@ -90,9 +90,9 @@ The split, measured after the extraction (code lines in `.cs` files at this comm
 
 | Area | Location | Lines | Shell-agnostic? |
 |---|---|---|---|
-| WinForms UI | `IcedAstroGrep.App/Windows/**` (60 files) | 23,821 | No — WinForms only |
+| WinForms UI | `IcedAstroGrep.WinForms/Windows/**` (60 files) | 23,821 | No — WinForms only |
 | Application services | `IcedAstroGrep.AppServices/**` (28 files) | 8,849 | **Yes** — a second shell references this |
-| Language resources | `IcedAstroGrep.App/Language/*.xml` + `Windows/Language.cs` | — | No — see §5.1 |
+| Language resources | `IcedAstroGrep.WinForms/Language/*.xml` + `Windows/Language.cs` | — | No — see §5.1 |
 | Engine | `IcedAstroGrep.Core/**` (101 files) | 17,422 | Yes, by construction |
 
 `IcedAstroGrep.AppServices` holds `Core/` (settings, `PluginManager`, `TextEditors`, `Constants`,
@@ -101,10 +101,27 @@ resource) and `Output/` (the exporters and their three embedded templates). **Th
 change** — `IcedAstroGrep`, `IcedAstroGrep.Plugins.*`, `IcedAstroGrep.Output` — so no call site had to
 change namespace along with the files.
 
+### 5.0 Naming rule for shells
+
+**Projects are named after the shell, assemblies after the product.** `IcedAstroGrep.WinForms` and
+(later) `IcedAstroGrep.WinUI` both set `<AssemblyName>IcedAstroGrep</AssemblyName>` and
+`<RootNamespace>IcedAstroGrep</RootNamespace>`, so:
+
+* both shells build an `IcedAstroGrep.exe`, and they ship in separate folders (so the shared assembly
+  name is not a collision);
+* `Language.cs` keeps finding `<assembly>.Language.<culture>.xml`, and the resource class stays
+  `IcedAstroGrep.Properties.Resources`, which is what the ~30 designer call sites expect;
+* the internal namespaces inside the WinForms shell (`IcedAstroGrep.Windows.*`) are historical and
+  deliberately untouched — renaming them would be churn without behaviour.
+
+Test projects follow the same rule and are named after what they test: `Core.Tests`,
+`AppServices.Tests` (no `UseWindowsForms`, so it proves the services need no UI framework),
+`WinForms.Tests`.
+
 ### 5.1 What deliberately stayed in the shell
 
 Five things sat in the shell-agnostic folders but are WinForms, WPF or Windows-shell code. They moved
-to `IcedAstroGrep.App` rather than into AppServices:
+to `IcedAstroGrep.WinForms` rather than into AppServices:
 
 | Type | Why it cannot leave the shell |
 |---|---|
@@ -138,7 +155,7 @@ Ordered by impact on the WinUI 3 shell.
 2. ~~**Extract the shell-agnostic code** (§5) into its own assembly~~ — **done**: settings, plug-ins,
    exporters and the notification seam now live in `IcedAstroGrep.AppServices`, the WinForms shell
    keeps the UI, and `ShellBoundaryTests` keeps the seam honest. A second shell references Core and
-   AppServices and never `IcedAstroGrep.App`.
+   AppServices and never `IcedAstroGrep.WinForms`.
 3. ~~**Logging.**~~ — **decided: keep one policy.** `LogClient` (NLog) stays Core-owned and configures
    itself in code to write under `<exe>\Log` with archiving. Both shells are portable and share the data
    folder, so sharing the log there is consistent; a shell that ever wants its own configuration only
@@ -155,7 +172,7 @@ Ordered by impact on the WinUI 3 shell.
 ## 7. Hand-off checklist for a new shell
 
 - [ ] Reference `IcedAstroGrep.Core` and `IcedAstroGrep.AppServices` — never the WinForms assembly
-      `IcedAstroGrep.App`.
+      `IcedAstroGrep.WinForms`.
 - [ ] Implement `ISearchSpec` (non-null `EncodingDetectionOptions`).
 - [ ] Run the search off the UI thread and marshal all ten events.
 - [ ] Wire cancellation to `Abort()` / `AbortAndWait()`, and never start a search over a running one.
@@ -185,12 +202,15 @@ dotnet test IcedAstroGrep.slnx
 minimum hit count, exclusions, subfolder recursion, regex timeout, `AbortAndWait`, encoding cache
 consistency and concurrency, `FilterItem` round trips, plug-in contract, and the traversal guards:
 context line limits, a real junction loop, overlapping start directories, unreadable exclusion
-values, binary detection beyond the first kilobyte) and 25 in `IcedAstroGrep.App.Tests` (settings
-atomicity, back-up recovery, write probe, real iFilter end-to-end, legacy code pages, window caption
-version and commit, and the shell boundary: no UI framework in `IcedAstroGrep.AppServices`, the
-exporter templates embedded where the exporters look for them, the language files still embedded in
-the shell, the `pdftotext` resource name matching the code and reading back as an executable, and the
-HTML colour equivalence above).
+values, binary detection beyond the first kilobyte), 14 in `IcedAstroGrep.AppServices.Tests` (settings
+atomicity, back-up recovery, write probe, real iFilter end-to-end, legacy code pages, and the
+AppServices side of the shell boundary: no UI framework reference, the exporter templates embedded
+where the exporters look for them, the `pdftotext` resource name matching the code and reading back as
+an executable) and 11 in `IcedAstroGrep.WinForms.Tests` (window caption version and commit, the shell
+still referencing WinForms, its language files still embedded, and the HTML colour equivalence above).
+
+`IcedAstroGrep.AppServices.Tests` deliberately does **not** set `UseWindowsForms`: the services have to
+work for any shell, so their tests must not need a UI framework either.
 
 CI runs the same commands on `windows-latest` (`.github/workflows/ci.yml`). Note that the iFilter
 integration test reports and skips itself when no filter is registered for `.txt`, so it is not

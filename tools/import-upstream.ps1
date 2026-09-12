@@ -55,13 +55,13 @@ Copy-Tree (Join-Path $srcRoot 'IFilterTextReader') (Join-Path $dstRoot 'src\Iced
 	'bin','obj','IFilterTextReader.csproj','Properties.xlsx'
 )
 
-# App
+# App (the WinForms shell; the project is named after the shell, the assembly after the product)
 $appSkip = @(
 	'bin','obj','Installer','AstroGrep.csproj','packages.config','App.config','AssemblyInfo.cs',
 	'DarkTheme.cs','DarkColorTable.cs','ThemeDarkMenuRenderer.cs','ThemeDarkToolStripRenderer.cs',
 	'RegistryMonitor.cs'
 )
-Copy-Tree (Join-Path $srcRoot 'WinformsGUI') (Join-Path $dstRoot 'src\IcedAstroGrep.App') $appSkip
+Copy-Tree (Join-Path $srcRoot 'WinformsGUI') (Join-Path $dstRoot 'src\IcedAstroGrep.WinForms') $appSkip
 
 # Remove leftover AssemblyInfo if copied
 Get-ChildItem -Path $dstRoot -Recurse -Include 'AssemblyInfo.cs','packages.config','*.csproj.bak' -ErrorAction SilentlyContinue |

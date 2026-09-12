@@ -5,6 +5,13 @@
 
 上游基线：[AstroGrep](http://astrogrep.sourceforge.net) 4.4.9（GPL-2.0-or-later）。
 
+## [未发布]
+
+### 变更
+
+- **项目按"壳"改名，程序集名保持不变**：`IcedAstroGrep.App` → `IcedAstroGrep.WinForms`，为第二个壳（WinUI 3）腾出命名规则。只改项目/目录名，`AssemblyName` 与 `RootNamespace` 仍是 `IcedAstroGrep`：两个壳都产出 `IcedAstroGrep.exe`，`Language.cs` 按"程序集名 + `.Language.` + 区域 + `.xml`"找资源、资源类名是 `IcedAstroGrep.Properties.Resources`，所以这两个名字都不能动。两个壳分开发布，因此同一程序集名不冲突。
+- **测试项目按"测谁"分家**：`IcedAstroGrep.App.Tests` → `IcedAstroGrep.WinForms.Tests`（只留壳自身的测试：版本戳、语言资源、壳确实引用 WinForms、HTML 颜色与原 `ColorTranslator` 等价），并新增 **`IcedAstroGrep.AppServices.Tests`**（设置持久化、旧代码页、iFilter 端到端、AppServices 侧的边界断言）。新项目**不设 `UseWindowsForms`**——它跑通本身就证明了这些服务不需要任何 UI 框架，也证明 `CodePagesEncodingProvider` 来自基础框架而不是 WindowsDesktop（这正是"第二个壳只引用 Core + AppServices 就够"的前提）。测试总数不变：84。
+
 ## [1.2.0] - 2026-09-12
 
 壳无关代码抽取为独立程序集 `IcedAstroGrep.AppServices`，并清掉 1.1.0 §已知问题里的绝大部分残留。WinForms 壳的功能面与 1.1.0 一致：窗口、菜单、搜索结果与导出行为都没有变。
@@ -39,7 +46,7 @@
 ### 计划中
 
 - 新增 WinUI 3 宿主壳，与现有 WinForms 壳共用同一个引擎与 `IcedAstroGrep.AppServices`。引擎与壳的边界、当前耦合点以及动手前应先做的决定见 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md)。
-- 抽取已完成（见上），第二个壳现在只需引用 `IcedAstroGrep.Core` 与 `IcedAstroGrep.AppServices`，不要再引用 `IcedAstroGrep.App`。
+- 抽取已完成（见上），第二个壳现在只需引用 `IcedAstroGrep.Core` 与 `IcedAstroGrep.AppServices`，不要再引用 `IcedAstroGrep.WinForms`（1.2.0 当时叫 `IcedAstroGrep.App`，见 [未发布] 的改名条目）。
 - **数据目录已决定**：两个壳都走免安装便携（**不做 MSIX 打包**），`ApplicationPaths.DataFolder`（入口程序集所在目录）保持不变，`Program.Main` 的"目录不可写"探测继续作为兜底。若将来真要做打包版，改动点就是一处 setter——`EncodingCache` 也写在该目录下，所以这从来不只是设置的问题。
 - **日志策略已决定**：`LogClient`（NLog）继续由 Core 拥有、按代码配置写入 `<exe>\Log`，两个壳共用一套；壳若将来要自己的配置，替换 `LogManager.Configuration` 即可。
 

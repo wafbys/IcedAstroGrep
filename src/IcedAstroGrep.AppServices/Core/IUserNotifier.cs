@@ -22,7 +22,7 @@
 	///   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	///
 	///   The engine knows the language *key*, not the text: the language resources belong to the shell
-	///   (IcedAstroGrep.App/Windows/Language.cs plus Language/*.xml), so a second shell brings its own
+	///   (IcedAstroGrep.WinForms/Windows/Language.cs plus Language/*.xml), so a second shell brings its own
 	///   wording and its own way of showing it -- a WinForms MessageBox today, a WinUI 3 ContentDialog
 	///   or nothing at all tomorrow. The engine always logs the same failure as well, so a caller that
 	///   passes null loses the dialog but not the diagnosis.

@@ -148,8 +148,8 @@ namespace IcedAstroGrep.Windows.Forms
 		{
 			LoadPlugins(0);
 
-			//Language.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
-			Language.ProcessForm(this);
+			//WinFormsLocalization.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
+			WinFormsLocalization.ProcessForm(this);
 
 			// set column text
 			PluginsList.Columns[0].Text = Language.GetGenericText("PluginsColumnEnabled");

@@ -85,7 +85,7 @@ namespace IcedAstroGrep.Windows.Forms
          // reset the controls here since the BaseForm could change the font and thus the size of the controls
          fvtValue.ResetControls();
 
-         Language.ProcessForm(this);
+         WinFormsLocalization.ProcessForm(this);
 
          cboCategories.DisplayMember = "DisplayName";
          foreach (string name in Enum.GetNames(typeof(FilterType.Categories)))

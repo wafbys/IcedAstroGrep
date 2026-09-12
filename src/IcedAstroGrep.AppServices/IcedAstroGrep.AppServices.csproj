@@ -35,6 +35,11 @@
     <EmbeddedResource Include="Output\Output.css" />
     <EmbeddedResource Include="Output\Output-fileNameOnly.html" />
     <!--
+      The language files travel with Language.cs, which resolves them as
+      "<assembly name>.Language.<culture>.xml" against its own assembly.
+    -->
+    <EmbeddedResource Include="Language\*.xml" />
+    <!--
       pdftotext.exe is redistributed inside the PDF plug-in, and its licence requires the Xpdf
       documentation to be distributed together with it; the App project copies that documentation
       beside the executable (third-party/xpdf). The plug-in extracts these bytes to a temporary file

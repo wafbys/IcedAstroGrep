@@ -33,10 +33,6 @@
     <ProjectReference Include="..\IcedAstroGrep.Core\IcedAstroGrep.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <!-- The language files stay with Language.cs, which resolves them against its own assembly. -->
-    <EmbeddedResource Include="Language\*.xml" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="Images\AstroGrep_256x256.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

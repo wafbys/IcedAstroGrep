@@ -293,8 +293,8 @@ namespace IcedAstroGrep.Windows.Forms
 								 "  %3 - Column\r\n" +
 								 "  %4 - Searched Text";
 
-			//Language.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
-			Language.ProcessForm(this, HoverTips);
+			//WinFormsLocalization.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
+			WinFormsLocalization.ProcessForm(this, HoverTips);
 
 			UpdateCmdLinePreview();
 		}
@@ -391,7 +391,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void UpdateCmdLinePreview()
 		{
-			string previewText = Language.GetControlText(lblCmdOptionsView);
+			string previewText = WinFormsLocalization.GetControlText(lblCmdOptionsView);
 			string editor = string.Empty;
 			string editorPath = txtTextEditorLocation.Text;
 			string args = txtCmdLineArgs.Text;

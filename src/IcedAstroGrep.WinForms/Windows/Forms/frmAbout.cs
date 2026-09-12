@@ -97,8 +97,8 @@ namespace IcedAstroGrep.Windows.Forms
 		private void frmAbout_Load(object sender, System.EventArgs e)
 		{
 			ForceBackColor(HeaderPanel, Theme.ThemeProvider.Theme.Colors.Window);
-			//Language.GenerateXml(Me, Application.StartupPath & "\" & Me.Name & ".xml")
-			Language.ProcessForm(this);
+			//WinFormsLocalization.GenerateXml(Me, Application.StartupPath & "\" & Me.Name & ".xml")
+			WinFormsLocalization.ProcessForm(this);
 
 			Text = string.Format(Text, ProductInformation.ApplicationName);
 

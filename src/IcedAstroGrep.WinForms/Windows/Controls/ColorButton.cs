@@ -95,7 +95,7 @@ namespace IcedAstroGrep.Windows.Controls
 				BuildPalette();
 
 				// Other button
-				__otherButton.Text = Windows.Language.GetGenericText("ColorOtherText");
+				__otherButton.Text = Language.GetGenericText("ColorOtherText");
 				__otherButton.Size = new Size(121, 22);
 				__otherButton.Location = new Point(5, 99);
 				__otherButton.Click += new System.EventHandler(moreColorsButton_Click);

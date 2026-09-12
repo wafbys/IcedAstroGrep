@@ -102,10 +102,11 @@ The split, measured after the extraction (code lines in `.cs` files at this comm
 | Engine | `IcedAstroGrep.Core/**` (101 files) | 17,422 | Yes, by construction |
 
 `IcedAstroGrep.AppServices` holds `Core/` (settings, `PluginManager`, `TextEditors`, `Constants`,
-`Convertors`, `IUserNotifier`, `CommandLineProcessing`), `Plugins/` (the built-in plug-ins, with
-`pdftotext.exe` as an embedded resource) and `Output/` (the exporters and their three embedded
-templates). **The namespaces did not change** — `IcedAstroGrep`, `IcedAstroGrep.Plugins.*`,
-`IcedAstroGrep.Output` — so no call site had to change namespace along with the files.
+`Convertors`, `IUserNotifier`, `CommandLineProcessing`, `Language` with its seven `Language/*.xml`),
+`Plugins/` (the built-in plug-ins, with `pdftotext.exe` as an embedded resource) and `Output/` (the
+exporters and their three embedded templates). **The namespaces did not change** — `IcedAstroGrep`,
+`IcedAstroGrep.Plugins.*`, `IcedAstroGrep.Output` — so no call site had to change namespace along with
+the files.
 
 ### 5.0 Naming rule for shells
 
@@ -135,7 +136,7 @@ to `IcedAstroGrep.WinForms` rather than into AppServices:
 | `UiConvertors` (`CalculateDropDownWidth`, `ConvertStringToFont`, `ConvertFontToString`, `ConvertStringToSolidColorBrush`, `GetComboBoxEntriesAsString`) | `ComboBox`, `Graphics`, `SystemInformation`, `System.Drawing.Font`, `System.Windows.Media.SolidColorBrush`. The value conversions that only need `System.Drawing.Primitives` stayed in AppServices' `Convertors`. |
 | `ControlInvokeExtensions.InvokeIfRequired` | Extension on `ISynchronizeInvoke` taking `System.Windows.Forms.MethodInvoker`. Kept in the `IcedAstroGrep` namespace so its 17 call sites did not have to change. |
 | `Shortcuts` | Creates a `.lnk` through `API.ShellLink` from `Windows/Win32.cs`, and uses `Application.ExecutablePath`. |
-| `Language` + `Language/*.xml` | `Language.cs` walks `MainMenu`/`MenuItem` trees, and the wording is the shell's own. The engine asks through `IUserNotifier` instead (§2), so both the text and the dialog stay a shell choice. |
+| `Language` (the text) + `Language/*.xml` | **Moved to AppServices**: key lookup, the seven language files and `LanguageItem`. What stays here is `WinFormsLocalization`, which applies the text to `Control`/`Form`/`MenuItem`/`ToolStripItem` and therefore cannot leave. The engine still asks for *messages* through `IUserNotifier` (§2), which carries language keys rather than sentences. |
 
 The only place where the extraction touched behaviour-visible code is
 `Convertors.ConvertColorSettingToHtml` in the exporters: `HTMLHelper` used
@@ -204,17 +205,17 @@ Ordered by impact on the WinUI 3 shell.
 dotnet test IcedAstroGrep.slnx
 ```
 
-95 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
+100 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
 minimum hit count, exclusions, subfolder recursion, regex timeout, `AbortAndWait`, encoding cache
 consistency and concurrency, `FilterItem` round trips, plug-in contract, and the traversal guards:
 context line limits, a real junction loop, overlapping start directories, unreadable exclusion
-values, binary detection beyond the first kilobyte), 25 in `IcedAstroGrep.AppServices.Tests` (settings
+values, binary detection beyond the first kilobyte), 30 in `IcedAstroGrep.AppServices.Tests` (settings
 atomicity, back-up recovery, write probe, real iFilter end-to-end, legacy code pages, the command line
-in all its implemented forms, and the AppServices side of the shell boundary: no UI framework
-reference, the exporter templates embedded where the exporters look for them, the `pdftotext` resource
-name matching the code and reading back as an executable) and 11 in `IcedAstroGrep.WinForms.Tests`
-(window caption version and commit, the shell still referencing WinForms, its language files still
-embedded, and the HTML colour equivalence above).
+in all its implemented forms, the language files and lookup, and the AppServices side of the shell
+boundary: no UI framework reference, the exporter templates embedded where the exporters look for
+them, the `pdftotext` resource name matching the code and reading back as an executable) and 11 in
+`IcedAstroGrep.WinForms.Tests` (window caption version and commit, the shell still referencing
+WinForms, the localizer applying text to a real form, and the HTML colour equivalence above).
 
 `IcedAstroGrep.AppServices.Tests` deliberately does **not** set `UseWindowsForms`: the services have to
 work for any shell, so their tests must not need a UI framework either.

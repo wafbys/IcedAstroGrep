@@ -154,7 +154,7 @@ namespace IcedAstroGrep.Windows.Forms
 				ppd.UseAntiAlias = true;
 				ppd.FormBorderStyle = FormBorderStyle.Sizable;
 				ppd.Icon = previewIcon;
-				ppd.Text = Language.GetControlText(cmdPreview).Replace("&", string.Empty);
+				ppd.Text = WinFormsLocalization.GetControlText(cmdPreview).Replace("&", string.Empty);
 
 				// set initial zoom level to 100%
 				ppd.PrintPreviewControl.Zoom = 1.0;
@@ -210,8 +210,8 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void frmPrint_Load(object sender, EventArgs e)
 		{
-			//Language.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
-			Language.ProcessForm(this);
+			//WinFormsLocalization.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
+			WinFormsLocalization.ProcessForm(this);
 
 			// load the list of types to print
 			lstPrintTypes.Items.Add(Language.GetGenericText("PrintTypeSelected"));

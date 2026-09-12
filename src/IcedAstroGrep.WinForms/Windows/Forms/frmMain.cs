@@ -847,7 +847,7 @@ namespace IcedAstroGrep.Windows.Forms
 			var label = (ToolStripStatusLabel)sender;
 			label.ToolTipText = "";
 			var newPoint = PointToClient(Cursor.Position);
-			toolTip1.Show(Language.GetControlToolTipText(label), this, newPoint.X, newPoint.Y);
+			toolTip1.Show(WinFormsLocalization.GetControlToolTipText(label), this, newPoint.X, newPoint.Y);
 		}
 
 		/// <summary>
@@ -1238,8 +1238,8 @@ namespace IcedAstroGrep.Windows.Forms
 			}
 
 			// Load language
-			//Language.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
-			Language.ProcessForm(this, toolTip1);
+			//WinFormsLocalization.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
+			WinFormsLocalization.ProcessForm(this, toolTip1);
 
 			// Load the general settings
 			LoadSettings();
@@ -1781,7 +1781,7 @@ namespace IcedAstroGrep.Windows.Forms
 			if (filterCount > 0)
 			{
 				StringBuilder tipBuilder = new StringBuilder();
-				tipBuilder.AppendFormat("{0}:", Language.GetControlText(lnkExclusions));
+				tipBuilder.AppendFormat("{0}:", WinFormsLocalization.GetControlText(lnkExclusions));
 				tipBuilder.AppendLine();
 				tipBuilder.AppendLine();
 				foreach (var filterItem in __FilterItems.Where(f => f.Enabled))
@@ -2597,7 +2597,7 @@ namespace IcedAstroGrep.Windows.Forms
 				// load new language if necessary
 				if (optionsForm.IsLanguageChange)
 				{
-					Language.ProcessForm(this, toolTip1);
+					WinFormsLocalization.ProcessForm(this, toolTip1);
 
 					SetColumnsText();
 					SetWindowText();
@@ -4012,7 +4012,7 @@ namespace IcedAstroGrep.Windows.Forms
 			if (item is ToolStripButton || item is ToolStripComboBox)
 			{
 				var newPoint = PointToClient(Cursor.Position);
-				toolTip1.Show(Language.GetControlToolTipText(item), this, newPoint.X, newPoint.Y);
+				toolTip1.Show(WinFormsLocalization.GetControlToolTipText(item), this, newPoint.X, newPoint.Y);
 			}
 		}
 

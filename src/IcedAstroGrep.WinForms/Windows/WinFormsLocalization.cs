@@ -4,73 +4,26 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using System.Xml;
-
 using IcedAstroGrep.Core;
-using IcedAstroGrep.Core.Logging;
 
-// This file deliberately supports both menu kinds: the WinForms shell still builds its menus from the
-// legacy MainMenu / MenuItem API, and the localizer also has to handle a MainMenuStrip (see the
-// frm.MainMenuStrip branch below). WFDEV006 only asks for the modern API, and migrating the shell's
-// menus to MenuStrip is a UI change that belongs with modernizing the shell, not with localization.
+// The menu walking below deliberately handles both kinds of menu: the shell still builds some menus
+// from the legacy MainMenu / MenuItem API and others from MainMenuStrip, so the localizer has to cope
+// with both. WFDEV006 only asks for the modern API, and migrating the shell's menus is a UI change
+// that belongs with modernizing the shell, not with localization.
 #pragma warning disable WFDEV006
 
 namespace IcedAstroGrep.Windows
 {
 	/// <summary>
-	/// Used to retrieve language specific text for controls and generic messages.
+	/// Applies the loaded language text to WinForms controls, menus and tool strips.
 	/// </summary>
 	/// <remarks>
-	/// IcedAstroGrep File Searching Utility. Written by Theodore L. Ward
-	/// Copyright (C) 2002 AstroComma Incorporated.
-	///
-	/// This program is free software; you can redistribute it and/or
-	/// modify it under the terms of the GNU General Public License
-	/// as published by the Free Software Foundation; either version 2
-	/// of the License, or (at your option) any later version.
-	///
-	/// This program is distributed in the hope that it will be useful,
-	/// but WITHOUT ANY WARRANTY; without even the implied warranty of
-	/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	/// GNU General Public License for more details.
-	///
-	/// You should have received a copy of the GNU General Public License
-	/// along with this program; if not, write to the Free Software
-	/// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-	///
-	/// The author may be contacted at:
-	/// ted@astrocomma.com or curtismbeard@gmail.com
+	/// The text itself (key lookup, the language files and loading them) lives in <see cref="Language"/>, which
+	/// moved to IcedAstroGrep.AppServices so every shell can show the same wording. Everything here takes
+	/// WinForms types and therefore stays with this shell.
 	/// </remarks>
-	/// <history>
-	/// [Curtis_Beard]      07/31/2006	Created
-	/// [Curtis_Beard]		02/28/2020	CHG: .Net 4.5 cleanup
-	/// </history>
-	public class Language
+	public static class WinFormsLocalization
 	{
-		private static readonly Dictionary<string, string> genericTextDictionary = new Dictionary<string, string>();
-		private static XmlNode __RootNode = null;
-		private static XmlDocument __XmlDoc = null;
-		private static List<LanguageItem> internalLanguages = null;
-
-		/// <summary>
-		/// Initializes an instance of the Language class.
-		/// </summary>
-		private Language()
-		{ }
-
-		/// <summary>
-		/// Gets the location of all the language files.
-		/// </summary>
-		/// <history>
-		/// [Curtis_Beard]		05/22/2007	Created
-		/// </history>
-		public static string LanguageLocation
-		{
-			get
-			{
-				return Path.Combine(ApplicationPaths.DataFolder, "Language");
-			}
-		}
-
 		/// <summary>
 		/// Generates an xml document for the given form with all controls.
 		/// </summary>
@@ -141,10 +94,10 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static string GetControlText(Control control)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = control.FindForm().Name;
-				XmlNode node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']");
+				XmlNode node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']");
 				XmlNode controlNode;
 
 				if (node != null)
@@ -174,10 +127,10 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static string GetControlToolTipText(Control control)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = control.FindForm().Name;
-				XmlNode node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']");
+				XmlNode node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']");
 				XmlNode controlNode;
 
 				if (node != null)
@@ -207,10 +160,10 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static string GetControlToolTipText(ToolStripItem control)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = control.Owner.FindForm().Name;
-				XmlNode node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']");
+				XmlNode node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']");
 				XmlNode controlNode;
 
 				if (node != null)
@@ -231,67 +184,6 @@ namespace IcedAstroGrep.Windows
 		}
 
 		/// <summary>
-		/// Gets a string value from the generic text section of a language file.
-		/// </summary>
-		/// <param name="name">Key name to retrieve</param>
-		/// <returns>string containing text or string.empty if not found</returns>
-		/// <history>
-		/// [Curtis_Beard]		07/31/2006	Created
-		/// </history>
-		public static string GetGenericText(string name)
-		{
-			return GetGenericText(name, string.Empty);
-		}
-
-		/// <summary>
-		/// Gets a string value from the generic text section of a language file.
-		/// </summary>
-		/// <param name="name">Key name to retrieve</param>
-		/// <param name="defaultValue">Default value to return if not found</param>
-		/// <returns>string containing text or given default value if not found</returns>
-		/// <history>
-		/// [Curtis_Beard]		07/31/2006	Created
-		/// [Curtis_Beard]		08/15/2017	PAT: 5, use dictionary instead of xpath for generic text
-		/// </history>
-		public static string GetGenericText(string name, string defaultValue)
-		{
-			if (genericTextDictionary != null && genericTextDictionary.ContainsKey(name))
-			{
-				return genericTextDictionary[name];
-			}
-
-			return defaultValue;
-		}
-
-		/// <summary>
-		/// Loads the given language's file.
-		/// </summary>
-		/// <param name="culture">String containing current cultrue to load</param>
-		/// <history>
-		/// [Curtis_Beard]		07/31/2006	Created
-		/// [Curtis_Beard]		10/11/2006	CHG: Close stream
-		/// [Curtis_Beard]		06/15/205	CHG: 57, support external language files
-		/// [LinkNet]				04/24/2017	CHG: Remove unused "language" parameter name
-		/// </history>
-		public static void Load(string culture)
-		{
-			LoadInternalLanguages();
-
-			if (!LoadInternal(culture))
-			{
-				if (!LoadExternal(culture))
-				{
-					// failed to load internal and external, so try default
-					if (LoadInternal(Constants.DEFAULT_LANGUAGE))
-					{
-						// success in loading default, make sure to update settings value
-						GeneralSettings.Language = Constants.DEFAULT_LANGUAGE;
-					}
-				}
-			}
-		}
-
-		/// <summary>
 		/// Loads the given ComboBox with the available languages.
 		/// </summary>
 		/// <param name="combo">ComboBox to load</param>
@@ -302,19 +194,12 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void LoadComboBox(ComboBox combo)
 		{
-			LoadInternalLanguages();
-
 			combo.Items.Clear();
 			combo.DisplayMember = "DisplayName";
 			combo.ValueMember = "Culture";
 
-			// load any external languages
-			var items = new List<LanguageItem>();
-			items.AddRange(internalLanguages);
-			items.AddRange(GetExternalLanguages());
-
-			// add languages to ComboBox
-			combo.Items.AddRange(items.ToArray());
+			// the shipped languages plus any external file beside the executable
+			combo.Items.AddRange(Language.AvailableLanguages.ToArray());
 		}
 
 		/// <summary>
@@ -339,7 +224,7 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void ProcessForm(Form frm, ToolTip tip)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				SetFormText(frm);
 
@@ -357,7 +242,7 @@ namespace IcedAstroGrep.Windows
 				{
 					foreach (MenuItem item in frm.Menu.MenuItems)
 					{
-						XmlNode menuNode = __RootNode.SelectSingleNode("screen[@name='" + frm.Name + "']/menu[@index='" + item.Index + "']");
+						XmlNode menuNode = Language.TextRoot.SelectSingleNode("screen[@name='" + frm.Name + "']/menu[@index='" + item.Index + "']");
 
 						if (menuNode != null && menuNode.Attributes["value"] != null)
 						{
@@ -374,7 +259,7 @@ namespace IcedAstroGrep.Windows
 					for (int i = 0; i < frm.MainMenuStrip.Items.Count; i++)
 					{
 						ToolStripMenuItem item = frm.MainMenuStrip.Items[i] as ToolStripMenuItem;
-						XmlNode menuNode = __RootNode.SelectSingleNode("screen[@name='" + frm.Name + "']/menu[@index='" + i + "']");
+						XmlNode menuNode = Language.TextRoot.SelectSingleNode("screen[@name='" + frm.Name + "']/menu[@index='" + i + "']");
 
 						if (menuNode != null && menuNode.Attributes["value"] != null)
 						{
@@ -428,17 +313,17 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void SetContextMenuItemText(Control holder, MenuItem item, MenuItem subItem)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = GetParentControl(holder).Name;
 				XmlNode node;
 				if (subItem == null)
 				{
-					node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + item.Index + "']");
+					node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + item.Index + "']");
 				}
 				else
 				{
-					node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + item.Index + "']/menuitem[@index='" + subItem.Index + "']");
+					node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + item.Index + "']/menuitem[@index='" + subItem.Index + "']");
 				}
 
 				if (node != null)
@@ -471,17 +356,17 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void SetContextMenuStripItemText(Control holder, ToolStripMenuItem item, ToolStripMenuItem subItem, int itemIndex, int subItemIndex)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = GetParentControl(holder).Name;
 				XmlNode node;
 				if (subItem == null)
 				{
-					node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + itemIndex + "']");
+					node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + itemIndex + "']");
 				}
 				else
 				{
-					node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + itemIndex + "']/menuitem[@index='" + subItemIndex + "']");
+					node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']/control[@name='" + holder.Name + "']/menuitem[@index='" + itemIndex + "']/menuitem[@index='" + subItemIndex + "']");
 				}
 
 				if (node != null)
@@ -523,10 +408,10 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void SetControlText(Control control, ToolTip tip)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = control.FindForm().Name;
-				XmlNode node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']");
+				XmlNode node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']");
 				XmlNode controlNode;
 
 				if (node != null)
@@ -559,9 +444,9 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void SetFormText(Form frm)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
-				XmlNode node = __RootNode.SelectSingleNode("screen[@name='" + frm.Name + "']");
+				XmlNode node = Language.TextRoot.SelectSingleNode("screen[@name='" + frm.Name + "']");
 
 				if (node != null && node.Attributes["value"] != null)
 				{
@@ -581,10 +466,10 @@ namespace IcedAstroGrep.Windows
 		/// </history>
 		public static void SetToolStripItemText(ToolStripItem control, ToolTip tip)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = control.Owner.FindForm().Name;
-				XmlNode node = __RootNode.SelectSingleNode("screen[@name='" + formName + "']");
+				XmlNode node = Language.TextRoot.SelectSingleNode("screen[@name='" + formName + "']");
 				XmlNode controlNode;
 
 				if (node != null)
@@ -608,31 +493,6 @@ namespace IcedAstroGrep.Windows
 					}
 				}
 			}
-		}
-
-		/// <summary>
-		/// Check the given LanguageItem list for a given culture.
-		/// </summary>
-		/// <param name="items">List to check against</param>
-		/// <param name="culture">Culture to check</param>
-		/// <returns>true if list contains culture, false otherwise</returns>
-		/// <history>
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// </history>
-		private static bool DoesExistInList(List<LanguageItem> items, string culture)
-		{
-			if (items != null && !string.IsNullOrEmpty(culture))
-			{
-				foreach (var item in items)
-				{
-					if (item.Culture.Equals(culture, StringComparison.OrdinalIgnoreCase))
-					{
-						return true;
-					}
-				}
-			}
-
-			return false;
 		}
 
 		/// <summary>
@@ -744,96 +604,6 @@ namespace IcedAstroGrep.Windows
 		}
 
 		/// <summary>
-		/// Retrieve all external language files from LanguageLocation property.
-		/// </summary>
-		/// <returns>List of all external language items</returns>
-		/// <history>
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// </history>
-		private static List<LanguageItem> GetExternalLanguages()
-		{
-			var items = new List<LanguageItem>();
-
-			try
-			{
-				if (Directory.Exists(LanguageLocation))
-				{
-					string[] files = Directory.GetFiles(LanguageLocation, "*.xml");
-
-					if (files.Length > 0)
-					{
-						foreach (string file in files)
-						{
-							var item = GetLanguageItemFromFile(file);
-							if (item != null && !DoesExistInList(internalLanguages, item.Culture) && !DoesExistInList(items, item.Culture))
-							{
-								items.Add(item);
-							}
-							else
-							{
-								LogClient.Instance.Logger.Info("External language already exists {0}", item != null ? item.Culture : string.Empty);
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				LogClient.Instance.Logger.Error("Unable to retrieve external languages {0}", LogClient.GetAllExceptions(ex));
-			}
-
-			return items;
-		}
-
-		/// <summary>
-		/// Retrieve the language information from the file specified.
-		/// </summary>
-		/// <param name="path">Full path to language file</param>
-		/// <returns>LanguageItem object containing file information, otherwise null</returns>
-		/// <history>
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// </history>
-		private static LanguageItem GetLanguageItemFromFile(string path)
-		{
-			LanguageItem item = null;
-
-			try
-			{
-				if (File.Exists(path))
-				{
-					XmlDocument doc = new XmlDocument();
-
-					doc.Load(path);
-
-					XmlNode root = doc.SelectSingleNode("language");
-
-					if (root != null && root.Attributes.Count > 0)
-					{
-						string displayName = string.Empty;
-						string culture = string.Empty;
-
-						if (root.Attributes["displayName"] != null)
-							displayName = root.Attributes["displayName"].Value;
-
-						if (root.Attributes["culture"] != null)
-							culture = root.Attributes["culture"].Value;
-
-						if (!string.IsNullOrEmpty(displayName) && !string.IsNullOrEmpty(culture))
-						{
-							item = new LanguageItem(displayName, culture, true, path);
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				LogClient.Instance.Logger.Error("Unable to retrieve external language information from file {0}, {1}", path, LogClient.GetAllExceptions(ex));
-			}
-
-			return item;
-		}
-
-		/// <summary>
 		/// Retrieves the top most control (parent) of the given control.
 		/// </summary>
 		/// <param name="ctrl">Control to find parent</param>
@@ -847,148 +617,6 @@ namespace IcedAstroGrep.Windows
 			else
 			{
 				return GetParentControl(ctrl.Parent);
-			}
-		}
-
-		/// <summary>
-		/// Attempts to load an external language file for the given culture.
-		/// </summary>
-		/// <param name="culture">Culture to load</param>
-		/// <returns>true on success, false otherwise</returns>
-		/// <history>
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// [Curtis_Beard]		08/15/2017	PAT: 5, use dictionary instead of xpath for generic text
-		/// </history>
-		private static bool LoadExternal(string culture)
-		{
-			try
-			{
-				if (Directory.Exists(LanguageLocation))
-				{
-					var items = GetExternalLanguages();
-					if (items != null && items.Count > 0)
-					{
-						var item = (from i in items where i.Culture.Equals(culture, StringComparison.OrdinalIgnoreCase) select i).FirstOrDefault();
-						if (item != null)
-						{
-							// found external language match, load content from file
-							__XmlDoc = new XmlDocument();
-							__XmlDoc.Load(item.ExternalFilePath);
-
-							XmlNode root = __XmlDoc.SelectSingleNode("language");
-
-							if (root != null && root.Attributes.Count > 0)
-							{
-								__RootNode = root;
-
-								if (__RootNode != null)
-								{
-									var genericNode = __RootNode.SelectSingleNode("generic");
-
-									if (genericNode != null)
-									{
-										genericTextDictionary.Clear();
-										var textNodes = genericNode.SelectNodes("text");
-										foreach (XmlNode node in textNodes)
-										{
-											genericTextDictionary.Add(node.Attributes["name"].Value, node.Attributes["value"].Value);
-										}
-
-										return true;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				LogClient.Instance.Logger.Error("Error loading external language {0}, {1}", culture, LogClient.GetAllExceptions(ex));
-			}
-
-			return false;
-		}
-
-		/// <summary>
-		/// Attempts to load an internal language file for the given culture.
-		/// </summary>
-		/// <param name="culture">Culture to load</param>
-		/// <returns>true on success, false otherwise</returns>
-		/// <history>
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// [Curtis_Beard]		08/15/2017	PAT: 5, use dictionary instead of xpath for generic text
-		/// </history>
-		private static bool LoadInternal(string culture)
-		{
-			try
-			{
-				System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
-				string _name = assembly.GetName().Name;
-
-				using (Stream stream = assembly.GetManifestResourceStream(string.Format("{0}.Language.{1}.xml", _name, culture)))
-				{
-					if (stream != null)
-					{
-						string contents = string.Empty;
-
-						using (StreamReader _reader = new StreamReader(stream))
-						{
-							contents = _reader.ReadToEnd();
-						}
-
-						stream.Close();
-
-						if (!contents.Equals(string.Empty))
-						{
-							__XmlDoc = new XmlDocument();
-							__XmlDoc.LoadXml(contents);
-
-							__RootNode = __XmlDoc.SelectSingleNode("language");
-
-							if (__RootNode != null)
-							{
-								var genericNode = __RootNode.SelectSingleNode("generic");
-
-								if (genericNode != null)
-								{
-									genericTextDictionary.Clear();
-									var textNodes = genericNode.SelectNodes("text");
-									foreach (XmlNode node in textNodes)
-									{
-										genericTextDictionary.Add(node.Attributes["name"].Value, node.Attributes["value"].Value);
-									}
-
-									return true;
-								}
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				LogClient.Instance.Logger.Error("Error loading internal language {0}, {1}", culture, LogClient.GetAllExceptions(ex));
-			}
-
-			return false;
-		}
-
-		private static void LoadInternalLanguages()
-		{
-			if (internalLanguages == null)
-			{
-				internalLanguages = new List<LanguageItem>
-				{
-					// load our internally defined languages
-					new LanguageItem("English", "en-us"),
-					new LanguageItem("Fran�ais", "fr-fr"),
-					new LanguageItem("Espa�ol", "es-es"),
-					new LanguageItem("Deutsch", "de-de"),
-					new LanguageItem("Italiano", "it-it"),
-					new LanguageItem("Dansk", "da-dk"),
-					new LanguageItem("Polski", "pl-pl")
-				};
 			}
 		}
 
@@ -1174,7 +802,7 @@ namespace IcedAstroGrep.Windows
 
 		private static void SetMenuItemText(MenuItem item, int mainMenuIndex)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				string formName = item.GetMainMenu().GetForm().Name;
 				MenuItem mainMenuItem = item.GetMainMenu().MenuItems[mainMenuIndex];
@@ -1195,7 +823,7 @@ namespace IcedAstroGrep.Windows
 
 				builder.Insert(0, string.Format("screen[@name='{0}']/menu[@index='{1}']", formName, mainMenuIndex));
 
-				XmlNode node = __RootNode.SelectSingleNode(builder.ToString());
+				XmlNode node = Language.TextRoot.SelectSingleNode(builder.ToString());
 				if (node != null)
 				{
 					if (node.Attributes["value"] != null)
@@ -1206,7 +834,7 @@ namespace IcedAstroGrep.Windows
 
 		private static void SetToolStripMenuItemText(ToolStripItem item, List<int> indexes)
 		{
-			if (__RootNode != null)
+			if (Language.TextRoot != null)
 			{
 				ToolStrip owner = item.Owner;
 				while (owner is ToolStripDropDownMenu)
@@ -1224,7 +852,7 @@ namespace IcedAstroGrep.Windows
 					builder.AppendFormat("/menu{0}[@index='{1}']", i == 0 ? string.Empty : "item", indexes[i]);
 				}
 
-				XmlNode node = __RootNode.SelectSingleNode(builder.ToString());
+				XmlNode node = Language.TextRoot.SelectSingleNode(builder.ToString());
 				if (node != null)
 				{
 					if (node.Attributes["value"] != null)
@@ -1232,92 +860,6 @@ namespace IcedAstroGrep.Windows
 				}
 			}
 		}
-	}
 
-	/// <summary>
-	/// Used to contain a language file.
-	/// </summary>
-	/// <history>
-	/// [Curtis_Beard]		05/22/2007	Created
-	/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-	/// </history>
-	internal class LanguageItem
-	{
-		/// <summary>
-		/// Creates a new instance of the LanguageItem class.
-		/// </summary>
-		/// <param name="displayName">Display name</param>
-		/// <param name="culture">Culture string</param>
-		/// <history>
-		/// [Curtis_Beard]		05/22/2007	Created
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// </history>
-		public LanguageItem(string displayName, string culture)
-		{
-			DisplayName = displayName;
-			Culture = culture;
-			IsExternal = false;
-			ExternalFilePath = null;
-		}
-
-		/// <summary>
-		/// Creates a new instance of the LanguageItem class.
-		/// </summary>
-		/// <param name="displayName">Display name</param>
-		/// <param name="culture">Culture string</param>
-		/// <param name="isExternal">Language is from external file</param>
-		/// <param name="filePath">File path to language file</param>
-		/// <history>
-		/// [Curtis_Beard]		06/15/2015	CHG: 57, support external language files
-		/// </history>
-		public LanguageItem(string displayName, string culture, bool isExternal, string filePath)
-		   : this(displayName, culture)
-		{
-			IsExternal = isExternal;
-
-			if (IsExternal)
-			{
-				ExternalFilePath = filePath;
-			}
-		}
-
-		/// <summary>
-		/// Gets/Sets the language's culture string.
-		/// </summary>
-		public string Culture
-		{
-			get;
-			set;
-		}
-
-		/// <summary>
-		/// Gets/Sets the language's display name.
-		/// </summary>
-		public string DisplayName
-		{
-			get;
-			set;
-		}
-
-		/// <summary>
-		/// Gets/Sets the external language's file path.
-		/// </summary>
-		/// <remarks>
-		/// Will be null if internal
-		/// </remarks>
-		public string ExternalFilePath
-		{
-			get;
-			set;
-		}
-
-		/// <summary>
-		/// Gets/Sets whether language is from external file.
-		/// </summary>
-		public bool IsExternal
-		{
-			get;
-			set;
-		}
 	}
 }

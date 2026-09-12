@@ -62,8 +62,8 @@ namespace IcedAstroGrep.Windows.Forms
       /// </history>
       private void frmCommandLine_Load(object sender, EventArgs e)
       {
-         //Language.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
-         Language.ProcessForm(this);
+         //WinFormsLocalization.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
+         WinFormsLocalization.ProcessForm(this);
 
          lstArguments.Items.Add(new ListViewItem(new string[] { "/spath=\"value\"", "Start Path" }));
          lstArguments.Items.Add(new ListViewItem(new string[] { "/stypes=\"value\"", "File Types" }));

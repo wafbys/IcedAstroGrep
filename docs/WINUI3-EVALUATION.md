@@ -101,8 +101,12 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
    顺带发现 `CLOptions.cs` 是死代码（真正的解析是手写的，没有任何地方调用 `ParseArguments<CLOptions>`），
    连同只服务于它的 `CommandLineParser` 包一起删除。命令行首次有了 11 个测试用例，并暴露了两处易踩边界：
    多参数时裸目录会被静默忽略（要用 `/spath=`），`/otype` 会被小写。
-3. **把语言查找下沉**：7 个 `Language/*.xml` + "键→文本"的逻辑放 AppServices，`Language.cs` 只留 WinForms
-   设计器遍历（`GenerateXml(Form frm, …)` 那些）。新壳用自己的资源方式呈现，但文案数据只有一份。
+3. ~~**把语言查找下沉**~~ — **已完成（2026-09-12）**：`Language.cs`（1,323 行）按成员块切开，键→文案查找、
+   加载与 7 个 `Language/*.xml` 进了 AppServices（新增 `Language.TextRoot`、`Language.AvailableLanguages`
+   两个访问器，`LanguageItem` 转 public），29 个只处理 WinForms 类型的成员留在壳内并改名 `WinFormsLocalization`。
+   新壳因此直接拿到同一套文案，而"怎么套到控件上"仍是各壳自己的事。语言文件与本地化器现在都有测试
+   （含"把 "Search Text" 套到真实 Form 控件上"）。切分脚本的**覆盖校验**在过程中抓出了 4 处会静默丢代码的
+   漏项，说明这种重构必须带完整性校验，不能只靠人工清单。
 4. 为 1 与 3 补测试。
 
 ## 4. 结果查看器：三条路（这一项决定整个评估）

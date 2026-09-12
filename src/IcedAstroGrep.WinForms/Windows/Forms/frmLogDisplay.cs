@@ -251,7 +251,7 @@ namespace IcedAstroGrep.Windows.Forms
 				this.Close();
 			}
 
-			Language.ProcessForm(this);
+			WinFormsLocalization.ProcessForm(this);
 
 			// column names aren't supported in Language class
 			lstLog.Columns[0].Text = Language.GetGenericText("LogDisplay.Column.Date", "Date");
@@ -281,7 +281,7 @@ namespace IcedAstroGrep.Windows.Forms
 			else
 				lstLog.Columns[3].Width = Constants.LOG_DISPLAY_COLUMN_WIDTH_DETAILS * GeneralSettings.WindowsDPIPerCentSetting / 100;
 
-			// do counts after Language.ProcessForm to get language specific text.
+			// do counts after WinFormsLocalization.ProcessForm to get language specific text.
 			sbtnStatus.Text = string.Format("{0} ({1})", sbtnStatus.Text, LogItems.CountByType(LogItem.LogItemTypes.Status));
 			sbtnExclusions.Text = string.Format("{0} ({1})", sbtnExclusions.Text, LogItems.CountByType(LogItem.LogItemTypes.Exclusion));
 			sbtnError.Text = string.Format("{0} ({1})", sbtnError.Text, LogItems.CountByType(LogItem.LogItemTypes.Error));

@@ -1,5 +1,7 @@
 using System.Linq;
 
+using IcedAstroGrep.Windows;
+
 using Xunit;
 
 namespace IcedAstroGrep.WinForms.Tests
@@ -21,13 +23,21 @@ namespace IcedAstroGrep.WinForms.Tests
 		}
 
 		[Fact]
-		public void TheLanguageResourcesStayedWithTheShell()
+		public void TheLocalizerAppliesTheLoadedTextToAForm()
 		{
-			// Language.cs resolves "<executing assembly>.Language.<culture>.xml" against its own
-			// assembly, so the text has to stay embedded in the shell that owns the wording
-			var shell = typeof(IcedAstroGrep.Windows.Language).Assembly;
+			// the text lives in AppServices now, but applying it to controls, menus and tool strips is
+			// still this shell's job, and this exercises the path it walks
+			Language.Load("en-us");
 
-			Assert.Contains("IcedAstroGrep.Language.en-us.xml", shell.GetManifestResourceNames());
+			using (var form = new System.Windows.Forms.Form { Name = "frmMain" })
+			{
+				var label = new System.Windows.Forms.Label { Name = "lblSearchText" };
+				form.Controls.Add(label);
+
+				WinFormsLocalization.ProcessForm(form);
+
+				Assert.Equal("Search Text", label.Text);
+			}
 		}
 
 		[Theory]

@@ -556,9 +556,9 @@ namespace IcedAstroGrep.Windows.Forms
 			ForceBackColor(chkUseEncodingCache, Color.Transparent, false);
 			ForceBackColor(lblForceEncoding, Color.Transparent, false);
 
-			//Language.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
-			Language.ProcessForm(this);
-			Language.LoadComboBox(cboLanguage);
+			//WinFormsLocalization.GenerateXml(this, Application.StartupPath + "\\" + this.Name + ".xml");
+			WinFormsLocalization.ProcessForm(this);
+			WinFormsLocalization.LoadComboBox(cboLanguage);
 
 			// set the user selected language
 			if (cboLanguage.Items.Count > 0)

@@ -209,7 +209,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void frmExclusions_Load(object sender, EventArgs e)
 		{
-			Language.ProcessForm(this);
+			WinFormsLocalization.ProcessForm(this);
 
 			StartPosition = FormStartPosition.Manual;
 

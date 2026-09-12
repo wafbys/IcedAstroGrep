@@ -112,7 +112,7 @@ namespace IcedAstroGrep.Windows.Forms
 		/// </history>
 		private void frmAddEditForceEncodingFile_Load(object sender, EventArgs e)
 		{
-			Language.ProcessForm(this, toolTip1);
+			WinFormsLocalization.ProcessForm(this, toolTip1);
 
 			if (SelectedFileEncoding != null)
 			{

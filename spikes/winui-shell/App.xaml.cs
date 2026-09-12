@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml;
 
-namespace WinUiSpike
+namespace WinUiShell
 {
 	/// <summary>
 	/// M0 entry point: start the window. There is no message loop to set up, no visual styles call and

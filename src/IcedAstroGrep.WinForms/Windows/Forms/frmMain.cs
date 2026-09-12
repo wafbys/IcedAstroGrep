@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 using IcedAstroGrep.Core;
+using IcedAstroGrep.Display;
 using IcedAstroGrep.Core.Logging;
 using IcedAstroGrep;
 using IcedAstroGrep.Theme;
@@ -2803,63 +2804,22 @@ namespace IcedAstroGrep.Windows.Forms
 					NonMatchForeground = nonForeground
 				});
 
-				StringBuilder builder = new StringBuilder();
-				var lineNumbers = new List<LineNumber>();
-
-				int maxResults = __Grep.MatchResults.Count;
-				for (int i = 0; i < maxResults; i++)
+				var document = ResultDocument.Build(__Grep.MatchResults, new ResultDocumentOptions
 				{
-					var match = __Grep.MatchResults[i];
-					var path = match.File.FullName;
-					builder.AppendLine(match.File.FullName);
-					builder.AppendLine();
-					lineNumbers.Add(new LineNumber() { FileFullName = path });
-					lineNumbers.Add(new LineNumber());
+					RemoveLeadingWhiteSpace = RemoveWhiteSpaceMenuItem.Checked,
+					BeforeContextLines = beforeContextLines,
+					AfterContextLines = afterContextLines
+				});
 
-					var matches = match.GetDisplayMatches(beforeContextLines, afterContextLines);
-					int max = matches.Count;
-					for (int j = 0; j < max; j++)
-					{
-						string line = matches[j].Line;
-
-						if (RemoveWhiteSpaceMenuItem.Checked)
-						{
-							if (matches[j].HasMatch)
-							{
-								line = line.Substring(Utils.GetValidLeadingSpaces(line, matches[j].Matches[0].StartPosition));
-							}
-							else
-							{
-								line = line.TrimStart();
-							}
-						}
-						builder.AppendLine(line);
-						lineNumbers.Add(new LineNumber()
-						{
-							Number = matches[j].LineNumber,
-							HasMatch = matches[j].HasMatch,
-							FileFullName = matches[j].LineNumber > -1 ? path : string.Empty,
-							ColumnNumber = matches[j].ColumnNumber
-						});
-					}
-
-					if (i + 1 < maxResults)
-					{
-						builder.AppendLine();
-						builder.AppendLine();
-						lineNumbers.Add(new LineNumber());
-						lineNumbers.Add(new LineNumber());
-					}
-				}
-
-				// the last result will have a hanging newline, so remove it.
-				if (builder.Length > 0)
+				txtHits.LineNumbers = document.Lines.Select(line => new LineNumber
 				{
-					builder.Remove(builder.Length - Environment.NewLine.Length, Environment.NewLine.Length);
-				}
+					Number = line.SourceLineNumber,
+					HasMatch = line.HasMatch,
+					FileFullName = line.SourceFile,
+					ColumnNumber = line.ColumnNumber
+				}).ToList();
 
-				txtHits.LineNumbers = lineNumbers;
-				txtHits.Text = builder.ToString();
+				txtHits.Text = document.Text;
 
 				ProcessDocumentForAnchors(false, RemoveWhiteSpaceMenuItem.Checked, beforeContextLines, afterContextLines);
 			}));

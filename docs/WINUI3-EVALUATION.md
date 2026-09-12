@@ -89,13 +89,16 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
 
 ## 3. 建议先做的下沉（收益独立于壳的选择）
 
-1. **抽出"结果展示模型"（最高优先级）**
-   现在的语义——显示哪些行、哪些区间要高亮、行号如何映射回源文件的行/列、上下文行如何合并——全部写在
-   `frmMain` 里，且**只以 AvalonEdit 的 API 表达**（`Document.Lines`/`CreateAnchor`/`LineTransformers`）。
-   把它提成 shell 中立的数据结构（行集合 + 高亮区间 + 源位置映射），收益有三：
-   * 新壳直接复用语义，不必重新发明"上下文行怎么显示"；
-   * **这些行为目前完全没有测试**（现有 84 个测试没有一个覆盖结果面板显示什么），抽出后可测；
-   * §4 的三种查看器方案都会因此变便宜。
+1. ~~**抽出"结果展示模型"（最高优先级）**~~ — **已完成（2026-09-12）**：新增
+   `IcedAstroGrep.AppServices/Display/ResultDocument.cs`（`ResultDocument` + `ResultDocumentLine` +
+   `ResultDocumentOptions`），`frmMain` 的"全部结果"组装（约 55 行）改为构建模型并投影成壳的 `LineNumber`。
+   验证用本项目一贯的手法：**改动前**加临时 dump、以固定 fixture 跑真实程序记录面板文本与行号映射，
+   **改动后**再 dump 一次、剔除时间戳后逐字比对 → **864 字符完全相同**。并补了 6 个模型测试
+   （结果面板此前**完全没有测试**，现在有了）。
+   **有意留在壳侧**的是渲染适配：单文件预览会把整个文件 `Load` 进 AvalonEdit（语法高亮是控件能力）、
+   高亮器按 `MatchResult` 自行重算着色、点击定位依赖 AvalonEdit 的锚点——这些正是 §4 三条路线各自要替换的部分。
+   **顺带发现（新壳必须知道）**：上下文行是**搜索时**捕获的（`ISearchSpec.ContextLines`），显示选项只是
+   从已捕获的行里挑选；新壳调整上下文行数时要让搜索也带上上下文，否则拿不到行。
 2. ~~**把命令行处理下沉到 AppServices**~~ — **已完成（2026-09-12）**：`CommandLineProcessing.cs`（含手写的
    `Arguments` 解析器与 `CommandLineArguments`）已在 AppServices，两个壳因此共享同一套开关与解析行为；
    顺带发现 `CLOptions.cs` 是死代码（真正的解析是手写的，没有任何地方调用 `ParseArguments<CLOptions>`），

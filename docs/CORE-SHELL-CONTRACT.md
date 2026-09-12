@@ -74,6 +74,11 @@ AppServices also owns the command line: `CommandLineProcessing.Process(args)` re
 switches (the reference list is the class comment) and each one presents the help in its own way. The
 WinForms shell opens `frmCommandLine`, whose option table is written by hand.
 
+The results pane is composed there too: `Display.ResultDocument.Build(matches, options)` returns the
+text of the pane plus, for every line, the source file/line/column it came from, so every shell lays
+results out identically and a shell only has to render it. Note that the context lines a shell can show
+are the ones the *search* captured (`ISearchSpec.ContextLines`); the display options select from those.
+
 
 ## 4. Threading and cancellation rules a shell must honour
 
@@ -103,10 +108,10 @@ The split, measured after the extraction (code lines in `.cs` files at this comm
 
 `IcedAstroGrep.AppServices` holds `Core/` (settings, `PluginManager`, `TextEditors`, `Constants`,
 `Convertors`, `IUserNotifier`, `CommandLineProcessing`, `Language` with its seven `Language/*.xml`),
-`Plugins/` (the built-in plug-ins, with `pdftotext.exe` as an embedded resource) and `Output/` (the
-exporters and their three embedded templates). **The namespaces did not change** — `IcedAstroGrep`,
-`IcedAstroGrep.Plugins.*`, `IcedAstroGrep.Output` — so no call site had to change namespace along with
-the files.
+`Display/` (`ResultDocument`, the composed results pane) and `Plugins/` (the built-in plug-ins, with
+`pdftotext.exe` as an embedded resource) and `Output/` (the exporters and their three embedded
+templates). **The namespaces did not change** — `IcedAstroGrep`, `IcedAstroGrep.Plugins.*`,
+`IcedAstroGrep.Output` — so no call site had to change namespace along with the files.
 
 ### 5.0 Naming rule for shells
 
@@ -205,17 +210,18 @@ Ordered by impact on the WinUI 3 shell.
 dotnet test IcedAstroGrep.slnx
 ```
 
-100 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
+106 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
 minimum hit count, exclusions, subfolder recursion, regex timeout, `AbortAndWait`, encoding cache
 consistency and concurrency, `FilterItem` round trips, plug-in contract, and the traversal guards:
 context line limits, a real junction loop, overlapping start directories, unreadable exclusion
-values, binary detection beyond the first kilobyte), 30 in `IcedAstroGrep.AppServices.Tests` (settings
+values, binary detection beyond the first kilobyte), 36 in `IcedAstroGrep.AppServices.Tests` (settings
 atomicity, back-up recovery, write probe, real iFilter end-to-end, legacy code pages, the command line
-in all its implemented forms, the language files and lookup, and the AppServices side of the shell
-boundary: no UI framework reference, the exporter templates embedded where the exporters look for
-them, the `pdftotext` resource name matching the code and reading back as an executable) and 11 in
-`IcedAstroGrep.WinForms.Tests` (window caption version and commit, the shell still referencing
-WinForms, the localizer applying text to a real form, and the HTML colour equivalence above).
+in all its implemented forms, the language files and lookup, the composed results pane, and the
+AppServices side of the shell boundary: no UI framework reference, the exporter templates embedded
+where the exporters look for them, the `pdftotext` resource name matching the code and reading back as
+an executable) and 11 in `IcedAstroGrep.WinForms.Tests` (window caption version and commit, the shell
+still referencing WinForms, the localizer applying text to a real form, and the HTML colour equivalence
+above).
 
 `IcedAstroGrep.AppServices.Tests` deliberately does **not** set `UseWindowsForms`: the services have to
 work for any shell, so their tests must not need a UI framework either.

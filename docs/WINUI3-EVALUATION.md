@@ -147,15 +147,18 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
 
 **未核实（本机网络受限，必须在你的机器上做一次）**
 
-* `net10.0-windows10.0.19041.0` + WASDK 2.4 的实际还原与构建。本机 .NET SDK 是 10.0.401 ✓，但
-  **nuget.org 与 github.com 都不可达**，且 `Microsoft.Windows.SDK.NET.Ref`（Windows WinRT 投影包）与
-  `Microsoft.WindowsAppSDK` 都不在本机 NuGet 缓存里——所以这条只能靠一次联网 spike 来定。
+* `net10.0-windows10.0.19041.0` + WASDK 2.4 的实际还原与构建。本机 .NET SDK 是 10.0.401 ✓、DNS 与 TLS
+  都正常（API 连续三次 HTTP 200、`github.com` 200、`git ls-remote` 成功），但**大传输会被截断**——实测
+  下载 WASDK 包时 HTTP 200、约 2.3 秒后流结束，只收到 **0.07 MB**（≈30 KB/s），NuGet 还原因此卡住。
+  本机也没有任何代理配置（WinHTTP 直连、无 `HTTP(S)_PROXY`、`NuGet.Config` 只有默认源），所以这不是
+  可以就地调整的配置问题。解决办法见 `spikes/winui-m0/README.md`：在你的机器上跑一次、或把还原好的
+  NuGet 缓存拷过来、或提供代理。
 
 ## 6. 建议的落地顺序与量级
 
 | 阶段 | 内容 | 量级（单人，熟悉 C#/XAML） |
 |---|---|---|
-| **M0 spike** | 最小 WinUI 3 工程（免打包 + 自包含）→ 引用 Core/AppServices → 跑通一次真实搜索 → 把 `MatchResults` 显示到窗口。同时验证工具链、TFM 与引擎接线 | **1–2 天**（其中"能不能构建"当天就有答案） |
+| **M0 spike** | 最小 WinUI 3 工程（免打包）→ 引用 Core/AppServices → 窗口里显示构建标识、内置插件数与一条本地化文案。同时验证工具链、TFM 与引擎接线。**脚手架已就位：`spikes/winui-m0/`**（刻意不在 `IcedAstroGrep.slnx` 内，主构建与 CI 不受影响） | **1–2 天**（其中"能不能构建"当天就有答案） |
 | M1 搜索闭环 | 输入区、开始/取消、进度、文件列表、错误与 `SearchRegexTimeoutException` 提示、`DispatcherQueue` 事件编组 | 1–2 周 |
 | M2 结果查看器 | 选定方案 + §3.1 展示模型 + 命中定位/打开编辑器/复制/导出预览 | 1–3 周（方案 A 偏 1，B/C 偏 3） |
 | M3 设置与插件界面 | 选项页、排除项编辑、文本编辑器配置、插件管理 | 2–3 周 |

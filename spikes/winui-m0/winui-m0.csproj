@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    M0 spike: the smallest WinUI 3 window that references the engine and the services.
+
+    It is deliberately NOT part of IcedAstroGrep.slnx, so `dotnet build IcedAstroGrep.slnx` (and CI)
+    do not try to restore the Windows App SDK. Run it on its own, from this folder:
+
+        dotnet restore
+        dotnet build -c Release
+        .\bin\Release\net10.0-windows10.0.19041.0\win-x64\winui-m0.exe
+
+    Framework dependent by default: it needs the Windows App SDK runtime installed once. To make it
+    self contained (no prerequisite, which is how the WinForms shell ships), add
+
+        <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+
+    to the property group below. That pulls the whole runtime into the output folder.
+
+    Note that Directory.Build.props sets TargetFramework to net10.0-windows for the repository; the
+    Windows App SDK needs the platform versioned TFM below, which is why this project overrides it.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>WinUiSpike</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <!-- Unpackaged: no MSIX, which is the decision recorded in docs/CORE-SHELL-CONTRACT.md 6.1. -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>winui-m0</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!--
+      The two projects a second shell is supposed to need, and nothing else: no IcedAstroGrep.WinForms,
+      no WinForms/WPF framework reference.
+    -->
+    <ProjectReference Include="..\..\src\IcedAstroGrep.Core\IcedAstroGrep.Core.csproj" />
+    <ProjectReference Include="..\..\src\IcedAstroGrep.AppServices\IcedAstroGrep.AppServices.csproj" />
+  </ItemGroup>
+</Project>

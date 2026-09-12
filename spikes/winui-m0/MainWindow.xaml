@@ -1,0 +1,14 @@
+<Window
+    x:Class="WinUiSpike.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Padding="24" Spacing="10">
+        <TextBlock FontSize="20" Text="WinUI 3 spike" />
+        <TextBlock x:Name="WindowText" Text="window is up" />
+        <TextBlock x:Name="EngineText" Text="engine: (not loaded)" />
+        <TextBlock x:Name="PluginText" Text="plug-ins: (not loaded)" />
+        <TextBlock x:Name="TextText" Text="text: (not loaded)" />
+        <TextBlock x:Name="BoundaryText" Foreground="Gray" TextWrapping="Wrap"
+                   Text="If all four lines above show values, the shell-agnostic half works from a WinUI 3 process." />
+    </StackPanel>
+</Window>

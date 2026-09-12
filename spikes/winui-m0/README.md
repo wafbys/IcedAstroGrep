@@ -62,9 +62,15 @@ large package. Practical alternatives, cheapest first:
 
 ## Status
 
-Written here but **not built here**: this environment could not finish the Windows App SDK restore
-(see above). The XAML and the project file follow the documented unpackaged layout, and the C# touches
-only members that exist in this repository, but treat it as "expected to compile" rather than
-"verified to compile" until it has been run once. If it does not build, the likely candidates are the
-Windows App SDK version (2.4.0 was the latest stable when this was written), the `Platforms`/`RID`
-combination, or a missing `WindowsAppSDKSelfContained`/`EnableMsixTooling` property.
+**Built and run successfully on 2026-09-12**, on a machine with a working NuGet connection. So the
+project file, the manifest and the XAML below are known good as written, and all three things this
+spike exists to prove are confirmed:
+
+* the toolchain works (`net10.0-windows10.0.19041.0` + Windows App SDK 2.4.0, unpackaged, x64);
+* a WinUI 3 app can reference `IcedAstroGrep.Core` and `IcedAstroGrep.AppServices` — both are
+  `net10.0-windows` assemblies, and referencing a lower platform version works as expected;
+* the shell-agnostic half works from a WinUI process.
+
+It has not been built inside the assistant's environment: that environment could not finish the
+Windows App SDK restore (large downloads come back truncated there; see "If NuGet is unreachable or
+stalls"). Keep that in mind only if you change the project, since a restore there will fail again.

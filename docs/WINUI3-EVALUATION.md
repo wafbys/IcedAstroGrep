@@ -145,20 +145,30 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
 * 最低系统：Windows 10 1809（17763）起；部分 API 需要更高版本。注意当前 `app.manifest` 还声明着 Win7/Win8
   GUID——做 WinUI 3 壳意味着**最低支持系统要上抬**（产品决定，见 §8）。
 
-**未核实（本机网络受限，必须在你的机器上做一次）**
+**已核实（你的机器，2026-09-12，M0 spike 构建并运行成功）**
 
-* `net10.0-windows10.0.19041.0` + WASDK 2.4 的实际还原与构建。本机 .NET SDK 是 10.0.401 ✓、DNS 与 TLS
-  都正常（API 连续三次 HTTP 200、`github.com` 200、`git ls-remote` 成功），但**大传输会被截断**——实测
-  下载 WASDK 包时 HTTP 200、约 2.3 秒后流结束，只收到 **0.07 MB**（≈30 KB/s），NuGet 还原因此卡住。
-  本机也没有任何代理配置（WinHTTP 直连、无 `HTTP(S)_PROXY`、`NuGet.Config` 只有默认源），所以这不是
-  可以就地调整的配置问题。解决办法见 `spikes/winui-m0/README.md`：在你的机器上跑一次、或把还原好的
-  NuGet 缓存拷过来、或提供代理。
+* `net10.0-windows10.0.19041.0` + Windows App SDK **2.4.0**、免打包（`WindowsPackageType=None`）、x64
+  的工程可以还原、构建、启动。
+* **一个 WinUI 3 工程可以引用 `net10.0-windows` 的 `IcedAstroGrep.Core` 与 `IcedAstroGrep.AppServices`**
+  —— 这解决了"平台版本更高的 TFM 能否引用这两个库"的疑问（平台版本是下限，可以引用低版本）。
+* 引擎侧的三个层次在 WinUI 进程里都能用：`ProductInformation` 的构建标识（Core）、`PluginManager` 与
+  内置插件（AppServices，含内嵌 `pdftotext` 与设置文件）、`Language` 的本地化文案（语言下沉的成果）。
+* 脚手架在 `spikes/winui-m0/`，刻意不在 `IcedAstroGrep.slnx` 内。
+
+**未核实（本机网络受限，其余仍需在你的机器上跑）**
+
+* 更进一步的 WinUI 实现（M1 的搜索循环与事件编组、M2 的查看器）同样需要 WASDK 包，本机因**大传输被截断**
+  无法还原：实测下载 WASDK 包时 HTTP 200、约 2.3 秒后流结束，只收到 **0.07 MB**（≈30 KB/s），NuGet 还原
+  因此卡住；本机也没有任何代理配置可调（WinHTTP 直连、无 `HTTP(S)_PROXY`、`NuGet.Config` 只有默认源）。
+  把小请求与大传输分开看，DNS / TCP / TLS / 小请求全部正常（API 连续三次 HTTP 200、`github.com` 200、
+  `git ls-remote` 成功），所以这不是"没有网络"。解法见 `spikes/winui-m0/README.md`：在你的机器上跑、
+  或把用 `dotnet restore --packages` 得到的离线缓存拷过来。
 
 ## 6. 建议的落地顺序与量级
 
 | 阶段 | 内容 | 量级（单人，熟悉 C#/XAML） |
 |---|---|---|
-| **M0 spike** | 最小 WinUI 3 工程（免打包）→ 引用 Core/AppServices → 窗口里显示构建标识、内置插件数与一条本地化文案。同时验证工具链、TFM 与引擎接线。**脚手架已就位：`spikes/winui-m0/`**（刻意不在 `IcedAstroGrep.slnx` 内，主构建与 CI 不受影响） | **1–2 天**（其中"能不能构建"当天就有答案） |
+| **M0 spike** | 最小 WinUI 3 工程（免打包）→ 引用 Core/AppServices → 窗口里显示构建标识、内置插件数与一条本地化文案。同时验证工具链、TFM 与引擎接线。**已完成：`spikes/winui-m0/`，2026-09-12 手工构建并运行成功**（刻意不在 `IcedAstroGrep.slnx` 内，主构建与 CI 不受影响） | 已完成 |
 | M1 搜索闭环 | 输入区、开始/取消、进度、文件列表、错误与 `SearchRegexTimeoutException` 提示、`DispatcherQueue` 事件编组 | 1–2 周 |
 | M2 结果查看器 | 选定方案 + §3.1 展示模型 + 命中定位/打开编辑器/复制/导出预览 | 1–3 周（方案 A 偏 1，B/C 偏 3） |
 | M3 设置与插件界面 | 选项页、排除项编辑、文本编辑器配置、插件管理 | 2–3 周 |

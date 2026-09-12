@@ -15,7 +15,10 @@ using IcedAstroGrep.Output;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.Web.WebView2.Core;
+
+using Windows.Graphics;
 
 namespace WinUiShell
 {
@@ -61,6 +64,15 @@ namespace WinUiShell
 			InitializeComponent();
 
 			dispatcher = DispatcherQueue;
+
+			// the caption carries the build identity, exactly like the WinForms shell's
+			Title = string.Format("{0} {1}", ProductInformation.ApplicationName, ProductInformation.ApplicationVersionText);
+
+			// open at a usable size rather than the default, and put the caret where the user starts
+			AppWindow.Resize(new SizeInt32(1100, 760));
+			SearchBox.Loaded += (sender, args) => SearchBox.Focus(FocusState.Programmatic);
+
+			ResetError();
 
 			try
 			{
@@ -136,7 +148,7 @@ namespace WinUiShell
 			}
 			catch (Exception ex)
 			{
-				ErrorText.Text = "Settings could not be loaded: " + ex.Message;
+				ShowError("Settings could not be loaded: " + ex.Message);
 			}
 		}
 
@@ -165,7 +177,7 @@ namespace WinUiShell
 			}
 			catch (Exception ex)
 			{
-				ErrorText.Text = "The language could not be changed: " + ex.Message;
+				ShowError("The language could not be changed: " + ex.Message);
 			}
 		}
 
@@ -200,6 +212,41 @@ namespace WinUiShell
 			return Language.GetGenericText(key, fallback);
 		}
 
+		/// <summary>
+		/// Reports a problem through the InfoBar, which is the Fluent way to say something went wrong
+		/// without blocking the user.
+		/// </summary>
+		private void ShowError(string message)
+		{
+			ErrorBar.Message = message;
+			ErrorBar.IsOpen = true;
+		}
+
+		private void ResetError()
+		{
+			ErrorBar.IsOpen = false;
+			ErrorBar.Message = string.Empty;
+		}
+
+		private void SearchAcceleratorInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+		{
+			args.Handled = true;
+			StartSearchClick(this, null);
+		}
+
+		private void CancelAcceleratorInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+		{
+			args.Handled = true;
+			CancelSearchClick(this, null);
+		}
+
+		private void FindAcceleratorInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+		{
+			args.Handled = true;
+			SearchBox.Focus(FocusState.Programmatic);
+			SearchBox.SelectAll();
+		}
+
 		private void StartSearchClick(object sender, RoutedEventArgs e)
 		{
 			if (searching)
@@ -207,7 +254,7 @@ namespace WinUiShell
 				return;
 			}
 
-			ErrorText.Text = string.Empty;
+			ResetError();
 
 			// This ordering is the contract, and it is why it is spelled out here rather than in a helper:
 			// detach the handlers first, so the previous search can no longer marshal callbacks onto this
@@ -233,7 +280,7 @@ namespace WinUiShell
 			}
 			catch (Exception ex)
 			{
-				ErrorText.Text = "Could not start the search: " + ex.Message;
+				ShowError("Could not start the search: " + ex.Message);
 				return;
 			}
 
@@ -251,6 +298,7 @@ namespace WinUiShell
 
 			StartButton.IsEnabled = false;
 			CancelButton.IsEnabled = true;
+			SearchPanel.IsEnabled = false;
 			Progress.IsActive = true;
 			SetStatus("searching\u2026");
 
@@ -350,7 +398,7 @@ namespace WinUiShell
 
 			OnUiThread(() =>
 			{
-				ErrorText.Text = string.IsNullOrEmpty(ErrorText.Text) ? line : ErrorText.Text + Environment.NewLine + line;
+				ShowError(line);
 
 				if (ex is SearchRegexTimeoutException)
 				{
@@ -385,6 +433,7 @@ namespace WinUiShell
 			Progress.IsActive = false;
 			StartButton.IsEnabled = true;
 			CancelButton.IsEnabled = false;
+			SearchPanel.IsEnabled = true;
 
 			SetStatus(string.Format(
 				"{0} in {1:0.00}s: {2} file(s) searched, {3} with hits, {4} hit line(s), {5} error(s)",
@@ -435,7 +484,7 @@ namespace WinUiShell
 			}
 			catch (Exception ex)
 			{
-				ErrorText.Text = "Could not show the results: " + ex.Message;
+				ShowError("Could not show the results: " + ex.Message);
 			}
 		}
 
@@ -485,7 +534,7 @@ namespace WinUiShell
 			}
 			catch (Exception ex)
 			{
-				ErrorText.Text = "Could not print the results: " + ex.Message;
+				ShowError("Could not print the results: " + ex.Message);
 			}
 		}
 

@@ -180,6 +180,13 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
 合计约 **6–10 周**，不含 WinForms 壳继续修 bug 的时间。M0 的结论出来之前，这个区间的不确定度主要来自
 "WASDK 在本机的构建体验"。
 
+**M4 的一部分已提前做掉**：界面按微软的 Fluent/WinUI 指南重做了一遍——4px 间距网格 + 24px 页边距、
+不设任何 `CornerRadius`（交给框架的 `ControlCornerRadius`/`OverlayCornerRadius`）、不出现硬编码颜色与
+`FontSize`（层次用类型阶梯，深色模式自动成立）、标签用控件自带的 `Header`、错误用 `InfoBar`、键盘用
+Enter/Esc/Ctrl+F/访问键、搜索期间禁用输入面板、窗口标题带构建标识。逐条对照表在
+`spikes/winui-shell/README.md`。**壳自身的文案国际化（`.resw` + `x:Uid`）有意留到 M3b**：等页面定稿
+再抽字符串，否则要跟着重做。
+
 ## 7. 替代路线（同一个引擎，代价不同）
 
 * **WPF 壳**：AvalonEdit 本身就是 WPF 控件，结果查看器（含高亮器、行号页边、缩放、自动换行）**几乎原样搬**；

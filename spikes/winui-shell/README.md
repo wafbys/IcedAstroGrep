@@ -73,6 +73,29 @@ dotnet build -c Release
 
 Put a folder in the first box, a search text in the second, press **Search**.
 
+## Following the Fluent guidelines
+
+The interface is built the way Microsoft's WinUI guidance asks for it. Each line is checkable in
+`MainWindow.xaml`:
+
+| Guideline | How it is followed |
+|---|---|
+| 4px spacing grid, 24px page margin | `Grid Margin="24" RowSpacing="12"`, 8/16 inside the groups |
+| Let the framework own geometry | **no `CornerRadius` anywhere**: `ControlCornerRadius` (4px) and `OverlayCornerRadius` (8px) apply, as [Geometry in Windows](https://learn.microsoft.com/en-us/windows/apps/design/signature-experiences/geometry) describes |
+| Respect the system theme, including dark mode | no literal colours and no `FontSize` in the markup: visuals come from each control's own theme resources |
+| Typographic hierarchy from the type ramp | `Style="{ThemeResource CaptionTextBlockStyle}"` for the status and plug-in lines ([Text block](https://learn.microsoft.com/en-us/windows/apps/design/controls/text-block)) |
+| A label belongs to its input | every `TextBox`/`ComboBox` uses its `Header`, which doubles as the accessibility label |
+| Report problems without blocking | an `InfoBar` with `Severity="Error"` instead of a coloured text block; only a search that *stopped* also gets a dialog |
+| Keyboard interaction | **Enter** searches, **Escape** cancels (through the Cancel button, which is disabled when nothing runs, so Escape cannot misfire), **Ctrl+F** focuses the search box, **Alt+S / Alt+C** access keys |
+| Prevent invalid actions | the input panel is disabled while a search runs |
+| Put the caret where work starts | the search box takes focus when the window loads |
+| Accessible names | `AutomationProperties.Name` on the file list and the results pane |
+| Start at a sensible size | the caption shows the build identity and the window opens at 1100×760 |
+
+Deliberately not done yet: the shell's own labels are still English literals. The guideline-compliant
+answer is a `.resw` resource file with `x:Uid` markup, which belongs with M3b once the screens and their
+strings have settled. Engine messages already come from the shared language files.
+
 ## What to report back
 
 * build errors, if any — the code was written without being built here (see below);
@@ -85,7 +108,10 @@ Put a folder in the first box, a search text in the second, press **Search**.
   Polish, …) — and that the WinForms shell starts in the same language afterwards, which is the shared
   settings file working in both directions;
 * **M2**: whether the pane renders the results as a formatted page (not plain text), whether **clicking a
-  result line opens it in your text editor at the right line**, and whether **Print** shows the print UI.
+  result line opens it in your text editor at the right line**, and whether **Print** shows the print UI;
+* **the Fluent pass**: whether **Enter** starts a search, **Escape** stops one, **Ctrl+F** focuses the
+  search box, **Alt+S/Alt+C** work, and whether the window follows your **system theme** (switch Windows to
+  dark mode: nothing should stay white or black).
 
 ## Why it is not built here
 

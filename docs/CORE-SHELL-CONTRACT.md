@@ -1,10 +1,9 @@
 # Core / shell contract
 
-The WinForms shell is frozen at **1.1.0**. This document is the hand-off for a second shell (WinUI 3)
-and records what already works, what a shell must supply, and the decisions that should be made
-before the second shell exists. It is written against the code as of 1.1.0 and extended when the
-shell-agnostic half moved out of the shell into `IcedAstroGrep.AppServices`; keep it current when the
-seam moves.
+The WinForms shell's feature set is frozen since **1.1.0** (1.2.0 moved the shell-agnostic code out of
+the shell and fixed bugs; it added no features). This document is the hand-off for a second shell
+(WinUI 3) and records what already works, what a shell must supply, and the decisions that were
+settled before the second shell exists. Keep it current when the seam moves.
 
 The model is **one engine, many shells**: `IcedAstroGrep.Core` is the engine and must never know
 which UI is driving it.
@@ -17,9 +16,9 @@ Verified, not assumed:
 * `IcedAstroGrep.Core.csproj` deliberately sets **no** `UseWindowsForms` / `UseWPF`.
 * `src/IcedAstroGrep.Core/bin/.../IcedAstroGrep.Core.deps.json` lists only `IcedAstroGrep.Core` and
   `NLog` — no `Microsoft.WindowsDesktop.App` framework reference.
-* The only drawing type Core touches is `System.Drawing.Color`
-  (`ProductInformation.ApplicationColor`), which ships in the base framework
-  (`System.Drawing.Primitives`) and needs no framework reference.
+* Core touches no drawing type at all: `ProductInformation.ApplicationColor` moved to its only
+  consumer, the WinForms theme (`LightTheme`), so nothing in the engine references `System.Drawing`
+  any more.
 * Core contains no reference to `IcedAstroGrep.Windows`, `IcedAstroGrep.Plugins` or
   `IcedAstroGrep.Output`.
 
@@ -45,6 +44,7 @@ application moved into (see §5):
 | `List<PluginWrapper>` via `Grep.Plugins` | Optional. Null means "no plug-ins", and then every file goes through the built-in stream search. |
 | A thread to run on | `Execute()` runs on the calling thread; `BeginExecute()` starts a background `Thread`. |
 | Cancellation policy | See §4. |
+| `ContextLines` within `Grep.MaxContextLines` | 0–1000. The engine checks this in `Execute()` and throws `ArgumentOutOfRangeException` otherwise, because the context ring buffer is allocated per file; the WinForms shell offers 0–25. |
 | `IUserNotifier` | Optional, for the engine's messages *to the user* (`TextEditors.Open(opener, notifier)`, null means log only). The engine passes a language key and format arguments; the shell owns the text and the dialog. The WinForms shell uses `WinFormsNotifier.Instance`; see §5.1. |
 
 `ISearchSpec` members: `SearchText`, `StartDirectories`, `StartFilePaths`, `SearchInSubfolders`,
@@ -128,21 +128,25 @@ case by case.
 
 Ordered by impact on the WinUI 3 shell.
 
-1. **Where the data lives.** `ApplicationPaths.DataFolder` is the entry assembly's folder — correct
-   for the portable, unpackaged build. An MSIX-packaged WinUI app **cannot write there**, so it would
-   hit the "application folder is not writable" notice on every start and lose its settings. Decide:
-   keep unpackaged/portable for both shells, or make the base directory injectable (a single setter
-   on `ApplicationPaths`) and let each shell choose. Core's `EncodingCache` writes under that path,
-   so this is not only a settings concern.
+1. ~~**Where the data lives.**~~ — **decided: portable for both shells, no MSIX.** The WinUI 3 shell is
+   built unpackaged and portable exactly like the WinForms one, so `ApplicationPaths.DataFolder` (the
+   entry assembly's folder) stays as it is and the whole folder can be carried on a stick or moved
+   between machines. `Program.Main` already probes that folder for writability and tells the user when
+   it is not, which is what remains of this concern. If a packaged build ever appears, the change is a
+   single setter on `ApplicationPaths` — Core's `EncodingCache` writes under that path too, so this was
+   never only a settings question.
 2. ~~**Extract the shell-agnostic code** (§5) into its own assembly~~ — **done**: settings, plug-ins,
    exporters and the notification seam now live in `IcedAstroGrep.AppServices`, the WinForms shell
    keeps the UI, and `ShellBoundaryTests` keeps the seam honest. A second shell references Core and
    AppServices and never `IcedAstroGrep.App`.
-3. **Logging.** `LogClient` (NLog) is Core-owned and writes under `<exe>\Log`. Decide whether the
-   WinUI shell keeps that policy or supplies its own NLog configuration.
-4. **Two small Core oddities**: `ProductInformation.IsPortable` is hardcoded `true`, and
-   `ApplicationColor` is a UI value living in the engine. Decide whether they stay or move into the
-   shells.
+3. ~~**Logging.**~~ — **decided: keep one policy.** `LogClient` (NLog) stays Core-owned and configures
+   itself in code to write under `<exe>\Log` with archiving. Both shells are portable and share the data
+   folder, so sharing the log there is consistent; a shell that ever wants its own configuration only
+   has to replace `LogManager.Configuration`.
+4. ~~**Two small Core oddities**~~ — **both resolved**: `ApplicationColor` moved to the WinForms theme
+   (`LightTheme`), which was its only consumer, so the engine no longer references `System.Drawing` at
+   all; `IsPortable` is now a documented `const` instead of a property that is hardcoded `true`, which
+   records "portable only, no packaged build" as the compile-time fact it is.
 5. **Settings compatibility.** `FilterItem` serialization (`~v2~` escaping) and the settings XML
    format are the compatibility surface between shells. Keep reusing both so a user can switch
    shells without losing exclusions.
@@ -177,14 +181,16 @@ Ordered by impact on the WinUI 3 shell.
 dotnet test IcedAstroGrep.slnx
 ```
 
-77 tests: 52 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
+84 tests: 59 in `IcedAstroGrep.Core.Tests` (filtering, negation, context lines, file names only,
 minimum hit count, exclusions, subfolder recursion, regex timeout, `AbortAndWait`, encoding cache
-consistency and concurrency, `FilterItem` round trips, plug-in contract) and 25 in
-`IcedAstroGrep.App.Tests` (settings atomicity, back-up recovery, write probe, real iFilter
-end-to-end, legacy code pages, window caption version and commit, and the shell boundary: no UI
-framework in `IcedAstroGrep.AppServices`, the exporter templates embedded where the exporters look
-for them, the language files still embedded in the shell, the `pdftotext` resource name matching the
-code and reading back as an executable, and the HTML colour equivalence above).
+consistency and concurrency, `FilterItem` round trips, plug-in contract, and the traversal guards:
+context line limits, a real junction loop, overlapping start directories, unreadable exclusion
+values, binary detection beyond the first kilobyte) and 25 in `IcedAstroGrep.App.Tests` (settings
+atomicity, back-up recovery, write probe, real iFilter end-to-end, legacy code pages, window caption
+version and commit, and the shell boundary: no UI framework in `IcedAstroGrep.AppServices`, the
+exporter templates embedded where the exporters look for them, the language files still embedded in
+the shell, the `pdftotext` resource name matching the code and reading back as an executable, and the
+HTML colour equivalence above).
 
 CI runs the same commands on `windows-latest` (`.github/workflows/ci.yml`). Note that the iFilter
 integration test reports and skips itself when no filter is registered for `.txt`, so it is not

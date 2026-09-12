@@ -70,13 +70,15 @@ on the way. It is a maintenance helper, not part of the build.
 ## Shells
 
 The engine is designed for **one Core, several shells**. `IcedAstroGrep.Core` deliberately references
-no UI framework — its `deps.json` contains only itself and NLog — so another shell can use it without
-pulling WinForms or WPF into the process.
+no UI framework — its `deps.json` contains only itself and NLog — and so does
+`IcedAstroGrep.AppServices`, where the shell-agnostic half of the application lives (settings,
+plug-ins, exporters). Another shell can therefore use both without pulling WinForms or WPF into the
+process.
 
-The WinForms shell is **frozen at 1.1.0**: it keeps receiving fixes, but new feature work belongs in
-the next shell. A WinUI 3 host is not in this tree yet. What a shell must supply, what the engine
-returns, the threading and cancellation rules, the shell-agnostic code that currently lives inside the
-WinForms assembly, and the decisions to settle first are all in
+The WinForms shell's feature set is **frozen since 1.1.0**: it keeps receiving fixes (1.2.0 only moves
+code and fixes bugs), but new feature work belongs in the next shell. A WinUI 3 host is not in this
+tree yet. What a shell must supply, what the engine returns, the threading and cancellation rules, the
+split between the shell and the shell-agnostic services, and the decisions already settled are all in
 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md).
 
 ## License

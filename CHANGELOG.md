@@ -5,7 +5,9 @@
 
 上游基线：[AstroGrep](http://astrogrep.sourceforge.net) 4.4.9（GPL-2.0-or-later）。
 
-## [未发布]
+## [1.2.0] - 2026-09-12
+
+壳无关代码抽取为独立程序集 `IcedAstroGrep.AppServices`，并清掉 1.1.0 §已知问题里的绝大部分残留。WinForms 壳的功能面与 1.1.0 一致：窗口、菜单、搜索结果与导出行为都没有变。
 
 ### 新增
 
@@ -20,11 +22,33 @@
 - **资源随其使用者一起搬走**：`pdftotext.exe` 与 PDF 插件同处 `IcedAstroGrep.AppServices`，并改为普通 `EmbeddedResource`（不再借用壳的 `Resources.resx` 与 `ResXFileRef`，相应清理了 `Resources.resx` / `Resources.Designer.cs` 中的条目）；`Output.html` / `Output.css` / `Output-fileNameOnly.html` 随导出器移动 —— `HTMLHelper.GetContents` 按"当前程序集名 + `.Output.` + 文件名"拼资源名，因此自动跟随。两者都有测试守护（模板能读出、`pdftotext` 资源名与代码常量一致）。
 - **壳专属代码明确留在壳内**：`Theme/`（WinForms 渲染）、`UiConvertors`（`Font` / `SolidColorBrush` / `ComboBox` / 下拉宽度计算）、`ControlInvokeExtensions.InvokeIfRequired`、`Shortcuts`（`API.ShellLink` + `Application.ExecutablePath`）与 `Language`（会遍历 `MainMenu`/`MenuItem`）。唯一触及可见行为的改动是导出 HTML 的颜色转换：`System.Drawing.ColorTranslator.ToHtml`（System.Drawing.Common）改为在壳无关程序集内格式化为 `#RRGGBB`；因 `ConvertStringToColor` 产出的颜色一律来自 `Color.FromArgb`（永不命中已知颜色/系统颜色分支），`ToHtml` 本来就只走 `#RRGGBB` 分支，输出逐字节不变 —— `ShellBoundaryTests` 用 7 组取值锁定该等价性。
 
+### 修复
+
+1.1.0 §已知问题中列出的评审 P2 项，以及两个 Core 遗留问题的处理如下。
+
+- **P2 `Grep` 的上下文行缓冲区随 `ContextLines` 无上限放大**：该缓冲区按 `ContextLines + 1` **逐文件**分配，API 调用方给一个过大的值就等于第一份文件开始 OOM。新增 `Grep.MaxContextLines`（1000）并在 `Execute()` 开头校验，超出范围（含负数，负数原先会在分配时抛异常）即抛 `ArgumentOutOfRangeException`，由搜索线程的错误处理转成可见的搜索错误——与既有的正则探针校验同一思路。WinForms 壳本来就只提供 0–25（`Constants.MAX_CONTEXT_LINES`），因此对现有用户没有任何行为变化。
+- **P2 递归遍历缺少符号链接 / 联接点环检测**：一个指向自身祖先的 junction 会让递归一直走下去，直到**不可捕获的** `StackOverflowException` 终止进程。现在每次搜索维护"已走过的真实目录（解析过链接）+ 文件过滤器"的集合，每个真实目录每个过滤器只走一次；顺带消除了"嵌套的起始目录导致同一文件被报告两次"的重复结果。
+- **P2 `FilterItem.IsBinaryFile` 只扫描 1 KB（注释称 10 KB）**：改为按注释的意图扫描 10 KB，并且用循环读满缓冲区——`Stream.Read` 允许只返回部分字节，原先单次调用可能只拿到更少内容。仅影响启用了"二进制"排除项的用户，且方向是少漏判。
+- **P2 `FilterItem.CheckLongAgainstOption` 对非法值抛 `FormatException`**：大小/长度的排除值不是数字时（手改设置文件、输入未完成），原先每个文件抛一次异常并中断该文件的排除判定；改为 `TryParse`，不匹配且记一条日志（每个排除项只记一次，避免每个文件刷一行）。
+- **P2 `PluginManager` 对损坏的插件配置做裸 `Parse`**：`bool.Parse`/`int.Parse` 遇到损坏或半截的 `IcedAstroGrep.plugins.config` 会抛异常并阻断启动。改为 `TryParse` + 警告日志，保留该插件原有状态。
+- **P2 `MediaTagsPlugin` 不释放 `TagLib.File`**：`TagLib.File` 持有文件流，改为 `using` 逐文件释放，不再把句柄留到终结器。
+- **P2 `MicrosoftWordPlugin` 异常路径遗留隐藏的 WINWORD 进程**：`Load()` 半途失败时已经创建了 Word 实例却只把 `IsUsable` 置为 false，进程无人回收；现在失败路径显式 `Unload()`（退出并释放 COM 对象）。
+- **P2 `TextEditors.LaunchEditor` 把值直接拼进命令行**：编辑器参数模板里的 `%1`（路径）与 `%4`（搜索词）现在会转义其中的引号，避免引号提前结束参数、把剩余内容当成额外开关。模板本身是用户为自己的编辑器写的原始命令行，因此这不是信任边界；反斜杠刻意不动（只有紧跟在引号前的反斜杠才特殊，成倍转义会破坏"搜索词里粘贴路径"这一常见用法）。
+- **§6.4 两个 Core 遗留点**：`ProductInformation.ApplicationColor`（一个 UI 值）移到它的唯一使用者——WinForms 主题 `LightTheme`，引擎因此**完全不再引用 `System.Drawing`**；`IsPortable` 由硬编码属性改为带说明的 `const`，明确"两个壳都免安装便携、不做打包版"是编译期事实而不是运行期开关。
+
 ### 计划中
 
 - 新增 WinUI 3 宿主壳，与现有 WinForms 壳共用同一个引擎与 `IcedAstroGrep.AppServices`。引擎与壳的边界、当前耦合点以及动手前应先做的决定见 [`docs/CORE-SHELL-CONTRACT.md`](docs/CORE-SHELL-CONTRACT.md)。
 - 抽取已完成（见上），第二个壳现在只需引用 `IcedAstroGrep.Core` 与 `IcedAstroGrep.AppServices`，不要再引用 `IcedAstroGrep.App`。
-- 另需先决定数据目录策略：`ApplicationPaths.DataFolder` 取可执行文件所在目录，MSIX 打包的 WinUI 应用无法写入该位置。
+- **数据目录已决定**：两个壳都走免安装便携（**不做 MSIX 打包**），`ApplicationPaths.DataFolder`（入口程序集所在目录）保持不变，`Program.Main` 的"目录不可写"探测继续作为兜底。若将来真要做打包版，改动点就是一处 setter——`EncodingCache` 也写在该目录下，所以这从来不只是设置的问题。
+- **日志策略已决定**：`LogClient`（NLog）继续由 Core 拥有、按代码配置写入 `<exe>\Log`，两个壳共用一套；壳若将来要自己的配置，替换 `LogManager.Configuration` 即可。
+
+### 已知问题
+
+- **搜索结果没有数量上限**：`Grep.MatchResults` 会一直增长到搜索结束，超大范围搜索可能耗尽内存。**刻意不做静默截断**——那会让用户以为"就只有这么多结果"，与本引擎"绝不静默漏报"的原则冲突。正确的形态是设置项（上限 + 到达上限时的明确提示），属于新功能，留待 WinUI 3 壳一并设计。
+- 会话中途才出现的设置写入失败（例如进程运行期间目录被改成只读）目前只进日志窗口，没有即时界面告警（见 `SettingsIO` 的说明）。
+- vendored 目录（`EncodingDetection/Ude`、`IFilterTextReader`）未做逐成员审计：`PreferedEncodingsForStream` 只写不读，但它牵动静态构造函数中的编码枚举逻辑，1.1.0 起就刻意不动。
+
 
 ## [1.1.0] - 2026-09-11
 
@@ -41,7 +65,7 @@
 - **P1-1 `IFilterTextReader.Read()` 必然抛异常**：该重载用 0 长度字符缓冲区调用三参数重载，每次都会抛 `ArgumentException`（本应返回下一个字符）。改为 1 长度缓冲区。
 - **P1-2 iFilter 读取循环可 100% CPU 空转**：`CHUNKSTATE` 是 `[Flags]` 枚举，组合值合法，原先 `switch (_chunk.flags)` 无 `default`，一个 case 都不命中且块保持有效，会在纯托管代码里无限空转；`S_OK` 但零长度文本且无分隔符时也会重复读取同一个块。现已补上 `default` 分支、让零长度文本推进到下一块，并增加"零进展"守卫——连续 64 次既无字符产出也无新块时以 `IFFilterPartiallyFiltered` 显式报错，而不是死循环或静默截断。读取超时默认启用（`TimeoutWithException`，60 秒/文档；显式设 `NoTimeout` 可退出），选择"抛异常"而非"静默当读完"是为了不产生假阴性。
 - **P1-3（部分）原生内存误用**：`CHUNK_VALUE` 路径不再用 `Marshal.AllocHGlobal` 预分配一块会被滤镜指针覆盖的内存（每个值块泄漏约 24 字节），也不再用 `FreeHGlobal` 释放滤镜以 `CoTaskMemAlloc` 分配的内存；改为读取后对该 PROPVARIANT 恰好调用一次 `PropVariantClear`，再用 `FreeCoTaskMem` 释放变体本身。`Dispose` 增加幂等保护与 `IsComObject` 判断，`ReleaseComObject` 不再从终结器抛出（终结器抛异常会直接终止进程）。
-- **尚未处理（P1-3 剩余）**：`FilterLoader` 的 `IStream` 从不释放、单次 `Read` 不保证填满、`CreateStreamOnHGlobal` 的 HRESULT 未检查；`Job.cs` 的句柄与内存泄漏；`VT_BLOB`/`VT_BSTR` 对畸形文档的可致 AV 路径。
+- **P1-3 剩余（当时的记录；同一轮内已修复，见本版下方"P1-3 剩余项"）**：`FilterLoader` 的 `IStream` 从不释放、单次 `Read` 不保证填满、`CreateStreamOnHGlobal` 的 HRESULT 未检查；`Job.cs` 的句柄与内存泄漏；`VT_BLOB`/`VT_BSTR` 对畸形文档的可致 AV 路径。
 - **P1-4 iFilter 失败导致静默漏报**：`FileHandlersPlugin` 在任何 iFilter 失败（读取超时、内容截断、文件过大、格式错误、口令保护等）时，现在既上报搜索错误、又置 `IsFileSkipped` 让默认文本搜索继续处理该文件。原先只上报错误却不回退，文件既没被 iFilter 搜到、也不会走默认搜索，等于漏报。读取超时改为显式设置（60 秒），不再依赖库默认值。`Extensions` 不再返回插件名 `"File Handlers"`——它在插件列表里被当作"扩展名"列显示，改为说明该插件依赖系统 iFilter。
 - **P1-4 `FilterSearcher.FileContainsText` 大小写错误**：原先只把行文本 `ToUpperInvariant()` 而搜索词没有同步大写，导致任何非大写搜索词都永远匹配不到；改为按 `ignoreCase` 使用 `StringComparison` 比较，并忽略 `null` 搜索词。
 - **P1-4（复核更正）**：评审称 "File Handlers" 插件"默认**启用**"有误。`PluginManager.cs:157` 传给 `PluginWrapper` 的参数是 `internalPlugin: true, enabled: false`（构造函数签名见 `PluginWrapper.cs:64`），该插件本就是**默认关闭**的；"先于默认搜索处理每一个文件"只发生在用户手动启用之后。

@@ -27,8 +27,6 @@ namespace WinUiShell
 	/// </remarks>
 	public sealed partial class MainWindow : Window
 	{
-		private const int DisplayContextLines = 2;
-
 		private static readonly TimeSpan PreviousSearchWaitTimeout = TimeSpan.FromSeconds(5);
 
 		private readonly DispatcherQueue dispatcher;
@@ -40,6 +38,18 @@ namespace WinUiShell
 		private int hitFiles;
 		private int lineHits;
 		private int errorCount;
+		private int displayContextLines = 2;
+		private bool loadingSettings;
+		private WinUiNotifier notifier;
+
+		/// <summary>
+		/// The dialog host for engine messages, created on first use because a window's XamlRoot is only
+		/// available once its content is in the visual tree.
+		/// </summary>
+		private WinUiNotifier Notifier
+		{
+			get { return notifier ?? (notifier = new WinUiNotifier(Content == null ? null : Content.XamlRoot)); }
+		}
 
 		public MainWindow()
 		{
@@ -59,7 +69,119 @@ namespace WinUiShell
 				PluginText.Text = "plug-ins failed: " + ex.Message;
 			}
 
+			ApplySettings();
+
 			LogClient.Instance.Logger.Info("### WinUI shell spike started, engine {0} ###", ProductInformation.ApplicationVersionText);
+		}
+
+		/// <summary>
+		/// Applies the settings the WinForms shell also owns, so a user can switch between the two shells
+		/// without losing anything: the language and the search options come from the same files.
+		/// </summary>
+		private void ApplySettings()
+		{
+			try
+			{
+				Language.Load(GeneralSettings.Language);
+
+				RecurseCheck.IsChecked = SearchSettings.UseRecursion;
+				CaseCheck.IsChecked = SearchSettings.UseCaseSensitivity;
+				WholeWordCheck.IsChecked = SearchSettings.UseWholeWordMatching;
+				RegexCheck.IsChecked = SearchSettings.UseRegularExpressions;
+				NegationCheck.IsChecked = SearchSettings.UseNegation;
+				FileNamesOnlyCheck.IsChecked = SearchSettings.ReturnOnlyFileNames;
+
+				// the search always captures the widest context; the pane shows this many lines around a hit
+				displayContextLines = SearchSettings.ContextLinesBefore;
+
+				LanguageBox.ItemsSource = Language.AvailableLanguages;
+
+				// selecting the current language raises SelectionChanged, which would save the settings
+				// again on every start; the flag keeps that inside ApplySettings
+				loadingSettings = true;
+
+				try
+				{
+					foreach (LanguageItem item in Language.AvailableLanguages)
+					{
+						if (string.Equals(item.Culture, GeneralSettings.Language, StringComparison.OrdinalIgnoreCase))
+						{
+							LanguageBox.SelectedItem = item;
+							break;
+						}
+					}
+				}
+				finally
+				{
+					loadingSettings = false;
+				}
+
+				SetStatus(Text("SearchStarted", "Search Started"));
+			}
+			catch (Exception ex)
+			{
+				ErrorText.Text = "Settings could not be loaded: " + ex.Message;
+			}
+		}
+
+		private void LanguageChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (loadingSettings)
+			{
+				return;
+			}
+
+			var item = LanguageBox.SelectedItem as LanguageItem;
+
+			if (item == null)
+			{
+				return;
+			}
+
+			try
+			{
+				Language.Load(item.Culture);
+				GeneralSettings.Language = item.Culture;
+				GeneralSettings.Save();
+
+				// everything the engine says is localized from here on; the shell's own labels stay its own
+				SetStatus(Text("SearchStarted", "Search Started"));
+			}
+			catch (Exception ex)
+			{
+				ErrorText.Text = "The language could not be changed: " + ex.Message;
+			}
+		}
+
+		/// <summary>
+		/// Writes the search options back to the shared settings so the other shell sees them too.
+		/// </summary>
+		/// <param name="spec">Spec the search was built from</param>
+		private void SaveSettings(SearchInterfaces.SearchSpec spec)
+		{
+			try
+			{
+				SearchSettings.UseRecursion = spec.SearchInSubfolders;
+				SearchSettings.UseCaseSensitivity = spec.UseCaseSensitivity;
+				SearchSettings.UseWholeWordMatching = spec.UseWholeWordMatching;
+				SearchSettings.UseRegularExpressions = spec.UseRegularExpressions;
+				SearchSettings.UseNegation = spec.UseNegation;
+				SearchSettings.ReturnOnlyFileNames = spec.ReturnOnlyFileNames;
+
+				SearchSettings.Save();
+			}
+			catch (Exception ex)
+			{
+				LogClient.Instance.Logger.Warn("The WinUI shell could not save the search options: {0}", ex.Message);
+			}
+		}
+
+		/// <summary>
+		/// Text for a key, with an English fallback so a missing key degrades to readable text.
+		/// </summary>
+		private static string Text(string key, string fallback)
+		{
+			return Language.GetGenericText(key, fallback);
 		}
 
 		private void StartSearchClick(object sender, RoutedEventArgs e)
@@ -98,6 +220,8 @@ namespace WinUiShell
 				ErrorText.Text = "Could not start the search: " + ex.Message;
 				return;
 			}
+
+			SaveSettings(spec);
 
 			FileList.Items.Clear();
 			ResultsPane.Text = string.Empty;
@@ -149,7 +273,7 @@ namespace WinUiShell
 		{
 			Interlocked.Increment(ref filesSearched);
 
-			OnUiThread(() => SetStatus(string.Format("{0} file(s) searched\u2026", filesSearched)));
+			OnUiThread(() => SetStatus(string.Format(Text("SearchSearching", "Searching {0}"), filesSearched)));
 		}
 
 		private void OnFileHit(FileInfo file, int index)
@@ -189,16 +313,33 @@ namespace WinUiShell
 			Interlocked.Increment(ref errorCount);
 
 			// A search that quietly returns nothing is the worst failure mode this engine has, so a
-			// pattern that exceeded the match timeout is called out rather than folded into a count.
-			string line = ex is SearchRegexTimeoutException
-				? "SEARCH STOPPED: " + ex.Message
-				: string.Format("error{0}: {1}", file == null ? string.Empty : " in " + file.FullName, ex.Message);
+			// pattern that exceeded the match timeout is called out in a dialog rather than folded into
+			// a counter: it means the search stopped early and the results are incomplete.
+			string line;
+
+			if (ex is SearchRegexTimeoutException)
+			{
+				line = "SEARCH STOPPED: " + ex.Message;
+			}
+			else if (file == null)
+			{
+				line = Text("SearchGenericError", "An error occurred searching.") + " " + ex.Message;
+			}
+			else
+			{
+				line = string.Format(Text("SearchFileError", "An error occurred searching file: {0}."), file.FullName) + " " + ex.Message;
+			}
 
 			LogClient.Instance.Logger.Warn("WinUI shell search error: {0}", line);
 
 			OnUiThread(() =>
 			{
 				ErrorText.Text = string.IsNullOrEmpty(ErrorText.Text) ? line : ErrorText.Text + Environment.NewLine + line;
+
+				if (ex is SearchRegexTimeoutException)
+				{
+					Notifier.Show(line, NotificationSeverity.Warning);
+				}
 			});
 		}
 
@@ -213,7 +354,7 @@ namespace WinUiShell
 
 		private void OnSearchingFileByPlugin(FileInfo file, string pluginName)
 		{
-			OnUiThread(() => SetStatus(string.Format("searching {0} with the {1} plug-in\u2026", file.Name, pluginName)));
+			OnUiThread(() => SetStatus(string.Format(Text("SearchSearchingByPlugin", "Plugin {0} was used to search the file."), pluginName)));
 		}
 
 		private void OnFileEncodingDetected(FileInfo file, System.Text.Encoding encoding, string encoderName)
@@ -230,8 +371,9 @@ namespace WinUiShell
 			CancelButton.IsEnabled = false;
 
 			SetStatus(string.Format(
-				"search {0} in {1:0.00}s: {2} file(s) searched, {3} with hits, {4} hit line(s), {5} error(s)",
-				outcome, stopwatch.Elapsed.TotalSeconds, filesSearched, hitFiles, lineHits, errorCount));
+				"{0} in {1:0.00}s: {2} file(s) searched, {3} with hits, {4} hit line(s), {5} error(s)",
+				Text(outcome == "cancelled" ? "SearchCancelled" : "SearchFinished", outcome),
+				stopwatch.Elapsed.TotalSeconds, filesSearched, hitFiles, lineHits, errorCount));
 
 			ShowResults();
 		}
@@ -250,8 +392,8 @@ namespace WinUiShell
 				// not re-implemented here.
 				ResultDocument document = ResultDocument.Build(grep.MatchResults, new ResultDocumentOptions
 				{
-					BeforeContextLines = DisplayContextLines,
-					AfterContextLines = DisplayContextLines
+					BeforeContextLines = displayContextLines,
+					AfterContextLines = displayContextLines
 				});
 
 				ResultsPane.Text = document.Text;

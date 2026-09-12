@@ -43,6 +43,8 @@
             <ProgressRing x:Name="Progress" IsActive="False" Width="20" Height="20" VerticalAlignment="Center" />
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Text="ready" />
             <TextBlock x:Name="PluginText" VerticalAlignment="Center" Foreground="Gray" />
+            <TextBlock Text="Language" VerticalAlignment="Center" />
+            <ComboBox x:Name="LanguageBox" MinWidth="170" DisplayMemberPath="DisplayName" SelectionChanged="LanguageChanged" />
         </StackPanel>
 
         <TextBlock x:Name="ErrorText" Grid.Row="4" Foreground="Firebrick" TextWrapping="Wrap" />

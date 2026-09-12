@@ -28,8 +28,22 @@ versioned TFM may reference them; and the shell-agnostic half runs in a WinUI pr
 * a failed search is **shown, not counted**: a pattern that exceeds the match timeout prints
   `SEARCH STOPPED: …` instead of quietly returning nothing.
 
+**M3a — settings, language and the notifier.** This version also:
+
+* loads the language and the search options from the **shared settings files**, so a user can switch
+  between the WinForms shell and this one without losing anything: the checkboxes and the context line
+  count come from `SearchSettings`, the wording from `GeneralSettings.Language`;
+* has a language picker filled from `Language.AvailableLanguages`; changing it calls `Language.Load`,
+  stores the choice and saves the settings — after which the engine's status strings
+  (`SearchStarted`, `SearchSearching`, `SearchFinished`, `SearchCancelled`, `SearchFileError`, …) come
+  out localized, which is what the language downshift bought. The shell's own labels stay its own
+  wording, as the contract says they should;
+* writes the search options back to `SearchSettings` when a search starts, so the other shell sees them;
+* implements `IUserNotifier` (`WinUiNotifier`, a `ContentDialog`) and uses it for the one message that
+  deserves a dialog: a search that stopped because the pattern exceeded the match timeout.
+
 Deliberately not here yet: highlighting and click-to-open in the results pane (M2, waiting on the viewer
-decision), settings / plug-in / text editor screens (M3), and an `IUserNotifier` implementation (M3).
+decision), and the full options / plug-in / text editor screens (M3b).
 
 ## How to run it
 
@@ -47,9 +61,12 @@ Put a folder in the first box, a search text in the second, press **Search**.
 * build errors, if any — the code was written without being built here (see below);
 * whether the file list and the results pane fill in, and whether **Cancel** stops a long search;
 * whether a bad pattern on a folder with long lines (for example `(a+)+$`) shows `SEARCH STOPPED: …`
-  rather than hanging or returning nothing;
+  **in a dialog** rather than hanging or returning nothing;
 * whether the plug-in line in the status row shows a count (that is `PluginManager` working from a WinUI
-  process, including the embedded `pdftotext`).
+  process, including the embedded `pdftotext`);
+* **the language picker**: change it and check that the status line's wording changes (English, German,
+  Polish, …) — and that the WinForms shell starts in the same language afterwards, which is the shared
+  settings file working in both directions.
 
 ## Why it is not built here
 

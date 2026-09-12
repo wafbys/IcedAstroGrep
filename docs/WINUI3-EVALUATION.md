@@ -174,7 +174,7 @@ IcedAstroGrep.WinForms     WinForms 壳：→ AppServices + Core；AvalonEdit + 
 | **M0 spike** | 最小 WinUI 3 工程（免打包）→ 引用 Core/AppServices → 窗口里显示构建标识、内置插件数与一条本地化文案。同时验证工具链、TFM 与引擎接线。**已完成：`spikes/winui-m0/`，2026-09-12 手工构建并运行成功**（刻意不在 `IcedAstroGrep.slnx` 内，主构建与 CI 不受影响） | 已完成 |
 | M1 搜索闭环 | 输入区、开始/取消、进度、文件列表、错误与 `SearchRegexTimeoutException` 提示、`DispatcherQueue` 事件编组。**已写出：`spikes/winui-shell/`**（十个事件全订阅、逐行事件不编组只计数、取消顺序按契约写死、失败显式呈现），待在真机构建验证 | 1–2 周（已写出，待验证） |
 | M2 结果查看器 | 选定方案 + §3.1 展示模型 + 命中定位/打开编辑器/复制/导出预览 | 1–3 周（方案 A 偏 1，B/C 偏 3） |
-| M3 设置与插件界面 | 选项页、排除项编辑、文本编辑器配置、插件管理 | 2–3 周 |
+| M3 设置与插件界面 | 选项页、排除项编辑、文本编辑器配置、插件管理。**M3a 已写出**：语言选择（`Language.AvailableLanguages` + `Language.Load`，状态行随之本地化）、搜索选项读写共享设置文件（与 WinForms 壳互通）、`IUserNotifier` 的 `ContentDialog` 实现并用于超时提示。**M3b 待做**：完整的选项页、排除项编辑、文本编辑器配置、插件管理 | 2–3 周（M3a 已写出，M3b 待做） |
 | M4 细节对齐 | 主题、快捷键、CLI、日志窗口、关于、iFilter 提示、打印或替代 | 1–2 周 |
 
 合计约 **6–10 周**，不含 WinForms 壳继续修 bug 的时间。M0 的结论出来之前，这个区间的不确定度主要来自
